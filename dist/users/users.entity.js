@@ -145,7 +145,7 @@ let User = class User {
             this.kycStatus === KYCStatus.APPROVED);
     }
     get requires2FA() {
-        return this.twoFactorEnabled && this.twoFactorMethod !== TwoFactorMethod.NONE;
+        return (this.twoFactorEnabled && this.twoFactorMethod !== TwoFactorMethod.NONE);
     }
     get hasValidPasswordResetToken() {
         if (!this.passwordResetToken || !this.passwordResetTokenExpiresAt) {
@@ -199,11 +199,18 @@ let User = class User {
         const rolePermissions = {
             [UserRole.SUPER_ADMIN]: ['*'],
             [UserRole.MERCHANT_OWNER]: [
-                'merchant:read', 'merchant:write', 'merchant:delete',
+                'merchant:read',
+                'merchant:write',
+                'merchant:delete',
                 'payment:read', 'payment:create',
-                'settlement:read', 'settlement:initiate',
-                'api-key:read', 'api-key:create', 'api-key:delete',
-                'user:read', 'user:invite', 'user:manage',
+                'settlement:read',
+                'settlement:initiate',
+                'api-key:read',
+                'api-key:create',
+                'api-key:delete',
+                'user:read',
+                'user:invite',
+                'user:manage',
                 'webhook:manage',
             ],
             [UserRole.CUSTOMER]: [
@@ -218,25 +225,32 @@ let User = class User {
                 'merchant:read', 'merchant:write',
                 'payment:read', 'payment:create',
                 'settlement:read', 'settlement:initiate',
-                'api-key:read', 'user:read', 'webhook:read',
+                'api-key:read',
+                'user:read',
+                'webhook:read',
             ],
             [UserRole.MERCHANT_VIEWER]: [
-                'merchant:read', 'payment:read', 'settlement:read',
+                'merchant:read',
+                'payment:read',
+                'settlement:read',
             ],
             [UserRole.DEVELOPER]: [
-                'merchant:read', 'payment:read', 'payment:create',
-                'api-key:read', 'webhook:read',
+                'merchant:read',
+                'payment:read',
+                'payment:create',
+                'api-key:read',
+                'webhook:read',
             ],
             [UserRole.FINANCE]: [
                 'merchant:read', 'payment:read',
-                'settlement:read', 'settlement:initiate', 'settlement:approve',
+                'settlement:read',
+                'settlement:initiate',
+                'settlement:approve',
             ],
-            [UserRole.SUPPORT]: [
-                'merchant:read', 'payment:read', 'user:read',
-            ],
+            [UserRole.SUPPORT]: ['merchant:read', 'payment:read', 'user:read'],
         };
         const userPermissions = rolePermissions[this.role] || [];
-        return userPermissions.includes('*') || userPermissions.includes(permission);
+        return (userPermissions.includes('*') || userPermissions.includes(permission));
     }
     toJSON() {
         const { password, twoFactorSecret, twoFactorBackupCodes, emailVerificationToken, phoneVerificationCode, passwordResetToken, activeSessions, ...sanitized } = this;
@@ -290,7 +304,9 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "status", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Associated merchant ID for multi-tenancy' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Associated merchant ID for multi-tenancy',
+    }),
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
     (0, typeorm_1.Index)(),
     __metadata("design:type", Object)
@@ -422,7 +438,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], User.prototype, "apiAccessEnabled", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'User timezone', example: 'Africa/Lagos' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'User timezone',
+        example: 'Africa/Lagos',
+    }),
     (0, typeorm_1.Column)({ type: 'varchar', length: 50, default: 'UTC' }),
     __metadata("design:type", String)
 ], User.prototype, "timezone", void 0);
@@ -432,7 +451,10 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "language", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Preferred fiat currency', example: 'USD' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Preferred fiat currency',
+        example: 'USD',
+    }),
     (0, typeorm_1.Column)({ type: 'varchar', length: 3, default: 'USD' }),
     __metadata("design:type", String)
 ], User.prototype, "preferredCurrency", void 0);

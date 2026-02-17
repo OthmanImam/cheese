@@ -38,12 +38,12 @@ export enum UserRole {
 }
 
 export enum UserStatus {
-  PENDING_VERIFICATION = 'pending_verification', // Email not verified
-  ACTIVE = 'active',                             // Active account
-  SUSPENDED = 'suspended',                       // Temporarily disabled
-  BANNED = 'banned',                             // Permanently disabled
-  PENDING_APPROVAL = 'pending_approval',         // KYC pending
-  LOCKED = 'locked',                             // Too many failed login attempts
+  PENDING_VERIFICATION = 'pending_verification',
+  ACTIVE = 'active',
+  SUSPENDED = 'suspended',
+  BANNED = 'banned',
+  PENDING_APPROVAL = 'pending_approval',
+  LOCKED = 'locked',
 }
 
 export enum KYCStatus {
@@ -111,14 +111,16 @@ export class User {
   status: UserStatus;
 
   // ==================== MULTI-TENANCY ====================
-  
-  @ApiPropertyOptional({ description: 'Associated merchant ID for multi-tenancy' })
+
+  @ApiPropertyOptional({
+    description: 'Associated merchant ID for multi-tenancy',
+  })
   @Column({ type: 'uuid', nullable: true })
   @Index()
   merchantId: string | null;
 
   // ==================== SECURITY & VERIFICATION ====================
-  
+
   @ApiProperty({ description: 'Whether email is verified' })
   @Column({ type: 'boolean', default: false })
   emailVerified: boolean;
@@ -142,7 +144,7 @@ export class User {
   phoneVerificationCodeExpiresAt: Date | null;
 
   // ==================== TWO-FACTOR AUTHENTICATION ====================
-  
+
   @ApiProperty({ description: '2FA method enabled', enum: TwoFactorMethod })
   @Column({
     type: 'enum',
@@ -206,7 +208,7 @@ export class User {
   kycRejectionReason: string | null;
 
   // ==================== SESSION & SECURITY TRACKING ====================
-  
+
   @ApiPropertyOptional({ description: 'Last successful login timestamp' })
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date | null;
@@ -230,7 +232,7 @@ export class User {
   @Column({ type: 'json', nullable: true })
   activeSessions: {
     sessionId: string;
-    createdAt: Date;
+        createdAt: Date;
     lastActivityAt: Date;
     ipAddress: string;
     userAgent: string;
@@ -244,8 +246,11 @@ export class User {
   apiAccessEnabled: boolean;
 
   // ==================== PREFERENCES & SETTINGS ====================
-  
-  @ApiPropertyOptional({ description: 'User timezone', example: 'Africa/Lagos' })
+
+  @ApiPropertyOptional({
+    description: 'User timezone',
+    example: 'Africa/Lagos',
+  })
   @Column({ type: 'varchar', length: 50, default: 'UTC' })
   timezone: string;
 
@@ -253,7 +258,10 @@ export class User {
   @Column({ type: 'varchar', length: 10, default: 'en' })
   language: string;
 
-  @ApiPropertyOptional({ description: 'Preferred fiat currency', example: 'USD' })
+  @ApiPropertyOptional({
+    description: 'Preferred fiat currency',
+    example: 'USD',
+  })
   @Column({ type: 'varchar', length: 3, default: 'USD' })
   preferredCurrency: string;
 
@@ -282,7 +290,7 @@ export class User {
   avatarUrl: string | null;
 
   // ==================== FINANCIAL LIMITS & CONTROLS ====================
-  
+
   @ApiPropertyOptional({ description: 'Daily transaction limit in USD' })
   @Column({ type: 'decimal', precision: 20, scale: 2, nullable: true })
   dailyTransactionLimit: number | null;
@@ -296,7 +304,7 @@ export class User {
   singleTransactionLimit: number | null;
 
   // ==================== AUDIT & METADATA ====================
-  
+
   @ApiProperty({ description: 'Record creation timestamp' })
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
@@ -349,7 +357,9 @@ export class User {
   }
 
   get requires2FA(): boolean {
-    return this.twoFactorEnabled && this.twoFactorMethod !== TwoFactorMethod.NONE;
+    return (
+      this.twoFactorEnabled && this.twoFactorMethod !== TwoFactorMethod.NONE
+    );
   }
 
   get hasValidPasswordResetToken(): boolean {
@@ -394,7 +404,10 @@ export class User {
     return bcrypt.compare(plainPassword, this.password);
   }
 
-  async incrementFailedLoginAttempts(maxAttempts = 5, lockDurationMinutes = 30): Promise<void> {
+  async incrementFailedLoginAttempts(
+    maxAttempts = 5,
+    lockDurationMinutes = 30,
+  ): Promise<void> {
     this.failedLoginAttempts += 1;
     if (this.failedLoginAttempts >= maxAttempts) {
       this.status = UserStatus.LOCKED;
@@ -420,53 +433,71 @@ export class User {
     const rolePermissions: Record<UserRole, string[]> = {
       [UserRole.SUPER_ADMIN]: ['*'],
       [UserRole.MERCHANT_OWNER]: [
-        'merchant:read', 'merchant:write', 'merchant:delete',
+        'merchant:read',
+        'merchant:write',
+        'merchant:delete',
         'payment:read', 'payment:create',
-        'settlement:read', 'settlement:initiate',
-        'api-key:read', 'api-key:create', 'api-key:delete',
-        'user:read', 'user:invite', 'user:manage',
+          'settlement:read',
+          'settlement:initiate',
+        'api-key:read',
+        'api-key:create',
+        'api-key:delete',
+        'user:read',
+        'user:invite',
+        'user:manage',
         'webhook:manage',
         ],
       [UserRole.CUSTOMER]: [
   'profile:read',
   'profile:write',
-  'payment:create',       // Initiate payments to merchants
-  'payment:read',         // View own payment history only
-  'wallet:read',          // View linked wallet info
-  'wallet:connect',       // Connect/disconnect crypto wallet
+  'payment:create',
+  'payment:read',
+  'wallet:read',
+  'wallet:connect',
 ],
       [UserRole.MERCHANT_ADMIN]: [
         'merchant:read', 'merchant:write',
         'payment:read', 'payment:create',
         'settlement:read', 'settlement:initiate',
-        'api-key:read', 'user:read', 'webhook:read',
+        'api-key:read',
+        'user:read',
+        'webhook:read',
       ],
       [UserRole.MERCHANT_VIEWER]: [
-        'merchant:read', 'payment:read', 'settlement:read',
+        'merchant:read',
+        'payment:read',
+        'settlement:read',
       ],
       [UserRole.DEVELOPER]: [
-        'merchant:read', 'payment:read', 'payment:create',
-        'api-key:read', 'webhook:read',
+        'merchant:read',
+        'payment:read',
+        'payment:create',
+        'api-key:read',
+        'webhook:read',
       ],
       [UserRole.FINANCE]: [
         'merchant:read', 'payment:read',
-        'settlement:read', 'settlement:initiate', 'settlement:approve',
+        'settlement:read',
+        'settlement:initiate',
+        'settlement:approve',
       ],
-      [UserRole.SUPPORT]: [
-        'merchant:read', 'payment:read', 'user:read',
-      ],
+      [UserRole.SUPPORT]: ['merchant:read', 'payment:read', 'user:read'],
     };
 
     const userPermissions = rolePermissions[this.role] || [];
-    return userPermissions.includes('*') || userPermissions.includes(permission);
+    return (
+      userPermissions.includes('*') || userPermissions.includes(permission)
+    );
   }
 
   toJSON() {
     const { 
-      password, twoFactorSecret, twoFactorBackupCodes,
+      password,
+      twoFactorSecret,
+      twoFactorBackupCodes,
       emailVerificationToken, phoneVerificationCode,
       passwordResetToken, activeSessions,
-      ...sanitized 
+      ...sanitized
     } = this;
     return sanitized;
   }
