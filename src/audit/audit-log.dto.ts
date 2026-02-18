@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Type, Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserAuditAction } from '../user/user.types';
+import { UserAuditAction } from '../users/user.types';
 
 // ================================================================
 // QUERY DTO
@@ -22,12 +22,14 @@ export class AuditLogQueryDto {
   @IsUUID()
   targetUserId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by user who performed the action' })
+  @ApiPropertyOptional({
+    description: 'Filter by user who performed the action',
+  })
   @IsOptional()
   @IsUUID()
   performedBy?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Filter by action type',
     enum: UserAuditAction,
   })
@@ -40,7 +42,7 @@ export class AuditLogQueryDto {
   @IsUUID()
   merchantId?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Start date for date range filter (ISO 8601)',
     example: '2024-01-01T00:00:00Z',
   })
@@ -48,7 +50,7 @@ export class AuditLogQueryDto {
   @IsISO8601()
   fromDate?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'End date for date range filter (ISO 8601)',
     example: '2024-12-31T23:59:59Z',
   })
@@ -56,7 +58,7 @@ export class AuditLogQueryDto {
   @IsISO8601()
   toDate?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Page number (1-indexed)',
     default: 1,
     minimum: 1,
@@ -67,7 +69,7 @@ export class AuditLogQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Number of records per page',
     default: 50,
     minimum: 1,
@@ -137,7 +139,7 @@ export class AuditLogResponseDto {
 // ================================================================
 
 export class PaginatedAuditLogsResponseDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Array of audit log entries',
     type: [AuditLogResponseDto],
   })

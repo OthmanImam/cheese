@@ -1,4 +1,4 @@
-import { UserAuditAction } from '../user/user.types';
+import { UserAuditAction } from '../users/user.types';
 export declare class AuditLogQueryDto {
     targetUserId?: string;
     performedBy?: string;

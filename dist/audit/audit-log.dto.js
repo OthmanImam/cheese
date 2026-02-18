@@ -8,13 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaginatedAuditLogsResponseDto = exports.AuditLogResponseDto = exports.AuditLogQueryDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
-const user_types_1 = require("../user/user.types");
+const user_types_1 = require("../users/user.types");
 class AuditLogQueryDto {
     targetUserId;
     performedBy;
@@ -34,7 +33,9 @@ __decorate([
     __metadata("design:type", String)
 ], AuditLogQueryDto.prototype, "targetUserId", void 0);
 __decorate([
-    (0, swagger_1.ApiPropertyOptional)({ description: 'Filter by user who performed the action' }),
+    (0, swagger_1.ApiPropertyOptional)({
+        description: 'Filter by user who performed the action',
+    }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsUUID)(),
     __metadata("design:type", String)
@@ -46,7 +47,7 @@ __decorate([
     }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsEnum)(user_types_1.UserAuditAction),
-    __metadata("design:type", typeof (_a = typeof user_types_1.UserAuditAction !== "undefined" && user_types_1.UserAuditAction) === "function" ? _a : Object)
+    __metadata("design:type", String)
 ], AuditLogQueryDto.prototype, "action", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({ description: 'Filter by merchant ID' }),
