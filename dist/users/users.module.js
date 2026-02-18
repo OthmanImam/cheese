@@ -6,23 +6,48 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UsersModule = void 0;
+exports.UserModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const jwt_1 = require("@nestjs/jwt");
+const config_1 = require("@nestjs/config");
 const users_entity_1 = require("./users.entity");
 const user_service_1 = require("./user.service");
 const user_controller_1 = require("./user.controller");
-let UsersModule = class UsersModule {
+const audit_log_1 = require("./audit/audit-log");
+const auth_guards_1 = require("./auth/auth.guards");
+let UserModule = class UserModule {
 };
-exports.UsersModule = UsersModule;
-exports.UsersModule = UsersModule = __decorate([
+exports.UserModule = UserModule;
+exports.UserModule = UserModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([users_entity_1.User]),
+            jwt_1.JwtModule.registerAsync({
+                imports: [config_1.ConfigModule],
+                inject: [config_1.ConfigService],
+                useFactory: (config) => ({
+                    secret: config.getOrThrow('JWT_SECRET'),
+                    signOptions: {
+                        expiresIn: config.get('JWT_EXPIRES_IN', '15m'),
+                    },
+                }),
+            }),
+            audit_log_1.AuditLogModule,
         ],
         controllers: [user_controller_1.UserController],
-        providers: [user_service_1.UserService],
-        exports: [user_service_1.UserService],
+        providers: [
+            user_service_1.UserService,
+            auth_guards_1.JwtAuthGuard,
+            auth_guards_1.OptionalJwtAuthGuard,
+            auth_guards_1.RolesGuard,
+        ],
+        exports: [
+            user_service_1.UserService,
+            auth_guards_1.JwtAuthGuard,
+            auth_guards_1.OptionalJwtAuthGuard,
+            auth_guards_1.RolesGuard,
+        ],
     })
-], UsersModule);
+], UserModule);
 //# sourceMappingURL=users.module.js.map

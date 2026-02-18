@@ -1161,6 +1161,65 @@ let UserService = UserService_1 = class UserService {
             });
         }
     }
+    async sendLoginOtp(userId) {
+        const user = await this.findByIdRaw(userId);
+        if (!user.twoFactorEnabled) {
+            throw new user_exceptions_1.TwoFactorNotEnabledException();
+        }
+        if (user.twoFactorMethod === users_entity_1.TwoFactorMethod.TOTP) {
+            return;
+        }
+        const rateLimitKey = `rate_limit:login_otp:${userId}`;
+        const isRateLimited = await this.redis.get(rateLimitKey);
+        if (isRateLimited) {
+            const ttl = await this.redis.ttl(rateLimitKey);
+            throw new user_exceptions_1.TooManyRequestsException({
+                code: 'LOGIN_OTP_RATE_LIMITED',
+                message: `Too many OTP requests. Please wait ${ttl} seconds.`,
+                retryAfter: ttl,
+            });
+        }
+        const code = crypto.randomInt(100000, 999999).toString();
+        await this.redis.setex(`2fa_login_otp:${userId}`, 300, code);
+        await this.redis.setex(rateLimitKey, 60, '1');
+        if (user.twoFactorMethod === users_entity_1.TwoFactorMethod.SMS) {
+            if (!user.phoneNumber || !user.phoneVerified) {
+                this.logger.error(`User ${userId} has SMS 2FA but no verified phone`);
+                throw new user_exceptions_1.TwoFactorNotEnabledException();
+            }
+            this.eventEmitter.emit('notification.sms', {
+                to: user.phoneNumber,
+                code,
+                userId: user.id,
+                context: '2fa_login',
+            });
+        }
+        if (user.twoFactorMethod === users_entity_1.TwoFactorMethod.EMAIL) {
+            this.eventEmitter.emit('notification.email', {
+                to: user.email,
+                userId: user.id,
+                context: '2fa_login',
+                code,
+            });
+        }
+    }
+    async getUsersByMerchantId(merchantId, ctx) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.merchantId !== merchantId) {
+            throw new user_exceptions_1.CrossMerchantAccessException();
+        }
+        const users = await this.userRepository.find({
+            where: {
+                merchantId,
+                role: (0, typeorm_2.Not)(users_entity_1.UserRole.CUSTOMER),
+            },
+            order: {
+                createdAt: 'DESC',
+            },
+            take: 500,
+        });
+        return users.map((user) => this.toResponseDto(user));
+    }
     encryptSecret(plaintext) {
         const key = Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'hex');
         if (key.length !== 32) {

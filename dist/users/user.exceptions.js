@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PasswordResetRateLimitException = exports.VerificationEmailRateLimitException = exports.InvalidInviteRoleException = exports.CrossMerchantAccessException = exports.CannotDeleteOwnAccountException = exports.CannotModifyOwnRoleException = exports.InsufficientPermissionsException = exports.InvalidBackupCodeException = exports.Invalid2FACodeException = exports.TwoFactorNotEnabledException = exports.TwoFactorAlreadyEnabledException = exports.TokenAlreadyUsedException = exports.ExpiredTokenException = exports.InvalidTokenException = exports.KYCAlreadySubmittedException = exports.KYCNotApprovedException = exports.AccountPendingApprovalException = exports.AccountLockedException = exports.AccountBannedException = exports.AccountSuspendedException = exports.AccountNotVerifiedException = exports.SamePasswordException = exports.PasswordMismatchException = exports.InvalidPasswordException = exports.PhoneAlreadyExistsException = exports.EmailAlreadyExistsException = exports.UserNotFoundException = void 0;
+exports.PasswordResetRateLimitException = exports.VerificationEmailRateLimitException = exports.TooManyRequestsException = exports.InvalidInviteRoleException = exports.CrossMerchantAccessException = exports.CannotDeleteOwnAccountException = exports.CannotModifyOwnRoleException = exports.InsufficientPermissionsException = exports.InvalidBackupCodeException = exports.Invalid2FACodeException = exports.TwoFactorNotEnabledException = exports.TwoFactorAlreadyEnabledException = exports.TokenAlreadyUsedException = exports.ExpiredTokenException = exports.InvalidTokenException = exports.KYCAlreadySubmittedException = exports.KYCNotApprovedException = exports.AccountPendingApprovalException = exports.AccountLockedException = exports.AccountBannedException = exports.AccountSuspendedException = exports.AccountNotVerifiedException = exports.SamePasswordException = exports.PasswordMismatchException = exports.InvalidPasswordException = exports.PhoneAlreadyExistsException = exports.EmailAlreadyExistsException = exports.UserNotFoundException = void 0;
 const common_1 = require("@nestjs/common");
 class UserNotFoundException extends common_1.NotFoundException {
     constructor(identifier) {
@@ -232,7 +232,13 @@ class InvalidInviteRoleException extends common_1.BadRequestException {
     }
 }
 exports.InvalidInviteRoleException = InvalidInviteRoleException;
-class VerificationEmailRateLimitException extends common_1.BadRequestException {
+class TooManyRequestsException extends common_1.HttpException {
+    constructor(response) {
+        super(response, common_1.HttpStatus.TOO_MANY_REQUESTS);
+    }
+}
+exports.TooManyRequestsException = TooManyRequestsException;
+class VerificationEmailRateLimitException extends TooManyRequestsException {
     constructor(retryAfterSeconds) {
         super({
             code: 'VERIFICATION_EMAIL_RATE_LIMITED',
@@ -242,7 +248,7 @@ class VerificationEmailRateLimitException extends common_1.BadRequestException {
     }
 }
 exports.VerificationEmailRateLimitException = VerificationEmailRateLimitException;
-class PasswordResetRateLimitException extends common_1.BadRequestException {
+class PasswordResetRateLimitException extends TooManyRequestsException {
     constructor(retryAfterSeconds) {
         super({
             code: 'PASSWORD_RESET_RATE_LIMITED',

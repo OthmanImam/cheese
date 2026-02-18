@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, GoneException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, GoneException, NotFoundException, UnauthorizedException, HttpException } from '@nestjs/common';
 export declare class UserNotFoundException extends NotFoundException {
     constructor(identifier?: string);
 }
@@ -74,9 +74,12 @@ export declare class CrossMerchantAccessException extends ForbiddenException {
 export declare class InvalidInviteRoleException extends BadRequestException {
     constructor(role: string);
 }
-export declare class VerificationEmailRateLimitException extends BadRequestException {
+export declare class TooManyRequestsException extends HttpException {
+    constructor(response: string | Record<string, any>);
+}
+export declare class VerificationEmailRateLimitException extends TooManyRequestsException {
     constructor(retryAfterSeconds: number);
 }
-export declare class PasswordResetRateLimitException extends BadRequestException {
+export declare class PasswordResetRateLimitException extends TooManyRequestsException {
     constructor(retryAfterSeconds: number);
 }

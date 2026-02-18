@@ -1,7 +1,6 @@
 import {
   Injectable,
   Logger,
-  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -15,8 +14,7 @@ import {
 } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-// import Redis from 'ioredis';
-import type { Redis as RedisType } from 'ioredis';
+import type { Redis } from 'ioredis';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
@@ -72,6 +70,7 @@ import {
   TwoFactorNotEnabledException,
   Invalid2FACodeException,
   InvalidBackupCodeException,
+  TooManyRequestsException,
   InsufficientPermissionsException,
   CannotModifyOwnRoleException,
   CannotDeleteOwnAccountException,
@@ -107,7 +106,7 @@ export class UserService {
     private readonly eventEmitter: EventEmitter2,
 
     @InjectRedis()
-    private readonly redis: RedisType,
+    private readonly redis: Redis,
   ) {}
 
   // ================================================================
@@ -1911,15 +1910,100 @@ export class UserService {
   }
 
   // ================================================================
-  // SECRET ENCRYPTION HELPERS
+  // ADDITIONAL METHODS (from user.service.additions.ts)
   // ================================================================
 
   /**
-   * Encrypt sensitive values (TOTP secrets) at rest.
-   * Uses AES-256-GCM. Key sourced from environment.
-   *
-   * NOTE: In production, replace with a proper KMS (AWS KMS, GCP KMS, HashiCorp Vault)
+   * Send login OTP for SMS/EMAIL 2FA.
+   * Called by AuthService after password verification.
    */
+  async sendLoginOtp(userId: string): Promise<void> {
+    const user = await this.findByIdRaw(userId);
+
+    if (!user.twoFactorEnabled) {
+      throw new TwoFactorNotEnabledException();
+    }
+
+    // TOTP requires no server-side OTP
+    if (user.twoFactorMethod === TwoFactorMethod.TOTP) {
+      return;
+    }
+
+    // Rate limit
+    const rateLimitKey = `rate_limit:login_otp:${userId}`;
+    const isRateLimited = await this.redis.get(rateLimitKey);
+
+    if (isRateLimited) {
+      const ttl = await this.redis.ttl(rateLimitKey);
+      throw new TooManyRequestsException({
+        code: 'LOGIN_OTP_RATE_LIMITED',
+        message: `Too many OTP requests. Please wait ${ttl} seconds.`,
+        retryAfter: ttl,
+      });
+    }
+
+    const code = crypto.randomInt(100000, 999999).toString();
+    await this.redis.setex(`2fa_login_otp:${userId}`, 300, code);
+    await this.redis.setex(rateLimitKey, 60, '1');
+
+    if (user.twoFactorMethod === TwoFactorMethod.SMS) {
+      if (!user.phoneNumber || !user.phoneVerified) {
+        this.logger.error(
+          `User ${userId} has SMS 2FA but no verified phone`,
+        );
+        throw new TwoFactorNotEnabledException();
+      }
+
+      this.eventEmitter.emit('notification.sms', {
+        to: user.phoneNumber,
+        code,
+        userId: user.id,
+        context: '2fa_login',
+      });
+    }
+
+    if (user.twoFactorMethod === TwoFactorMethod.EMAIL) {
+      this.eventEmitter.emit('notification.email', {
+        to: user.email,
+        userId: user.id,
+        context: '2fa_login',
+        code,
+      });
+    }
+  }
+
+  /**
+   * Get users by merchant ID.
+   */
+  async getUsersByMerchantId(
+    merchantId: string,
+    ctx: RequestContext,
+  ): Promise<UserResponseDto[]> {
+    if (
+      ctx.role !== UserRole.SUPER_ADMIN &&
+      ctx.merchantId !== merchantId
+    ) {
+      throw new CrossMerchantAccessException();
+    }
+
+    const users = await this.userRepository.find({
+      where: {
+        merchantId,
+        role: Not(UserRole.CUSTOMER),
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      take: 500,
+    });
+
+    return users.map((user) => this.toResponseDto(user));
+  }
+
+  // ================================================================
+  // SECRET ENCRYPTION HELPERS
+  // ================================================================
+
   private encryptSecret(plaintext: string): string {
     const key = Buffer.from(
       process.env.ENCRYPTION_KEY ?? '',
@@ -1953,13 +2037,9 @@ export class UserService {
   }
 
   // ================================================================
-  // STATISTICS (admin dashboard)
+  // STATISTICS
   // ================================================================
 
-  /**
-   * Get aggregate user statistics.
-   * Used by the admin dashboard.
-   */
   async getUserStats(ctx: RequestContext): Promise<Record<string, number>> {
     if (ctx.role !== UserRole.SUPER_ADMIN) {
       throw new InsufficientPermissionsException('view platform statistics');

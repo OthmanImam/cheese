@@ -1,6 +1,6 @@
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { Redis as RedisType } from 'ioredis';
+import type { Redis } from 'ioredis';
 import { User } from './users.entity';
 import { CreateUserDto, UpdateUserDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto, ResendVerificationEmailDto, VerifyPhoneDto, Enable2FADto, Verify2FADto, Disable2FADto, Use2FABackupCodeDto, UpdateUserRoleDto, UpdateUserStatusDto, UpdateTransactionLimitsDto, InviteTeamMemberDto, UserQueryDto, UserResponseDto, PaginatedUsersResponseDto, TwoFactorSetupResponseDto, MessageResponseDto } from './user.dto';
 import { RequestContext } from './user.types';
@@ -10,7 +10,7 @@ export declare class UserService {
     private readonly eventEmitter;
     private readonly redis;
     private readonly logger;
-    constructor(userRepository: Repository<User>, dataSource: DataSource, eventEmitter: EventEmitter2, redis: RedisType);
+    constructor(userRepository: Repository<User>, dataSource: DataSource, eventEmitter: EventEmitter2, redis: Redis);
     private generateToken;
     private hashToken;
     private generateBackupCodes;
@@ -53,6 +53,8 @@ export declare class UserService {
     toggleApiAccess(targetUserId: string, enable: boolean, ctx: RequestContext): Promise<MessageResponseDto>;
     recordSuccessfulLogin(userId: string, ipAddress: string, userAgent: string): Promise<void>;
     recordFailedLogin(email: string, ipAddress: string): Promise<void>;
+    sendLoginOtp(userId: string): Promise<void>;
+    getUsersByMerchantId(merchantId: string, ctx: RequestContext): Promise<UserResponseDto[]>;
     private encryptSecret;
     private decryptSecret;
     getUserStats(ctx: RequestContext): Promise<Record<string, number>>;
