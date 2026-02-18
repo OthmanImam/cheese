@@ -128,5 +128,5 @@ export declare class User {
     resetFailedLoginAttempts(): void;
     updateLastLogin(ipAddress: string, userAgent: string): void;
     hasPermission(permission: string): boolean;
-    toJSON(): Omit<this, "password" | "twoFactorSecret" | "twoFactorBackupCodes" | "emailVerificationToken" | "phoneVerificationCode" | "passwordResetToken" | "activeSessions" | "isLocked" | "canAccess" | "requires2FA" | "hasValidPasswordResetToken" | "hasValidEmailVerificationToken" | "normalizeData" | "hashPassword" | "validatePassword" | "incrementFailedLoginAttempts" | "resetFailedLoginAttempts" | "updateLastLogin" | "hasPermission" | "toJSON">;
+    toJSON(): Omit<this, "password" | "emailVerificationToken" | "phoneVerificationCode" | "twoFactorSecret" | "twoFactorBackupCodes" | "passwordResetToken" | "activeSessions" | "normalizeData" | "hashPassword" | "isLocked" | "canAccess" | "requires2FA" | "hasValidPasswordResetToken" | "hasValidEmailVerificationToken" | "validatePassword" | "incrementFailedLoginAttempts" | "resetFailedLoginAttempts" | "updateLastLogin" | "hasPermission" | "toJSON">;
 }

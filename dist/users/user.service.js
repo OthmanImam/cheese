@@ -44,11 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var UserService_1;
-var _a, _b;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const common_1 = require("@nestjs/common");
@@ -56,13 +52,12 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const event_emitter_1 = require("@nestjs/event-emitter");
 const ioredis_1 = require("@nestjs-modules/ioredis");
-const ioredis_2 = __importDefault(require("ioredis"));
 const crypto = __importStar(require("crypto"));
 const bcrypt = __importStar(require("bcrypt"));
 const speakeasy = __importStar(require("speakeasy"));
 const qrcode = __importStar(require("qrcode"));
 const class_transformer_1 = require("class-transformer");
-const user_entity_1 = require("./user.entity");
+const users_entity_1 = require("./users.entity");
 const user_dto_1 = require("./user.dto");
 const user_exceptions_1 = require("./user.exceptions");
 const user_types_1 = require("./user.types");
@@ -80,10 +75,7 @@ let UserService = UserService_1 = class UserService {
     }
     generateToken(expiryMs) {
         const token = crypto.randomBytes(32).toString('hex');
-        const hashedToken = crypto
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
         const expiresAt = new Date(Date.now() + expiryMs);
         return { token, hashedToken, expiresAt };
     }
@@ -140,7 +132,7 @@ let UserService = UserService_1 = class UserService {
         await this.redis.setex(key, cooldownSeconds, '1');
     }
     assertMerchantScope(ctx, targetUser) {
-        if (ctx.role === user_entity_1.UserRole.SUPER_ADMIN)
+        if (ctx.role === users_entity_1.UserRole.SUPER_ADMIN)
             return;
         if (ctx.userId === targetUser.id)
             return;
@@ -150,11 +142,11 @@ let UserService = UserService_1 = class UserService {
         }
     }
     assertAccountAccessible(user) {
-        if (user.status === user_entity_1.UserStatus.BANNED)
+        if (user.status === users_entity_1.UserStatus.BANNED)
             throw new user_exceptions_1.AccountBannedException();
-        if (user.status === user_entity_1.UserStatus.SUSPENDED)
+        if (user.status === users_entity_1.UserStatus.SUSPENDED)
             throw new user_exceptions_1.AccountSuspendedException();
-        if (user.status === user_entity_1.UserStatus.PENDING_APPROVAL)
+        if (user.status === users_entity_1.UserStatus.PENDING_APPROVAL)
             throw new user_exceptions_1.AccountPendingApprovalException();
         if (user.isLocked)
             throw new user_exceptions_1.AccountLockedException(user.lockedUntil);
@@ -193,13 +185,13 @@ let UserService = UserService_1 = class UserService {
         await queryRunner.startTransaction();
         try {
             const { token, hashedToken, expiresAt } = this.generateToken(user_types_1.TOKEN_EXPIRY.EMAIL_VERIFICATION);
-            const user = queryRunner.manager.create(user_entity_1.User, {
+            const user = queryRunner.manager.create(users_entity_1.User, {
                 email: normalizedEmail,
                 password: dto.password,
                 fullName: dto.fullName ?? null,
                 phoneNumber: dto.phoneNumber ?? null,
-                role: dto.role ?? user_entity_1.UserRole.MERCHANT_OWNER,
-                status: user_entity_1.UserStatus.PENDING_VERIFICATION,
+                role: dto.role ?? users_entity_1.UserRole.MERCHANT_OWNER,
+                status: users_entity_1.UserStatus.PENDING_VERIFICATION,
                 merchantId: dto.merchantId ?? null,
                 timezone: dto.timezone ?? 'UTC',
                 language: dto.language ?? 'en',
@@ -209,15 +201,15 @@ let UserService = UserService_1 = class UserService {
                 createdBy: ctx.userId ?? null,
                 createdFromIp: ctx.ipAddress ?? null,
                 metadata: dto.metadata ?? null,
-                kycStatus: user_entity_1.KYCStatus.NOT_STARTED,
+                kycStatus: users_entity_1.KYCStatus.NOT_STARTED,
                 twoFactorEnabled: false,
-                twoFactorMethod: user_entity_1.TwoFactorMethod.NONE,
+                twoFactorMethod: users_entity_1.TwoFactorMethod.NONE,
                 apiAccessEnabled: false,
                 emailVerified: false,
                 phoneVerified: false,
                 failedLoginAttempts: 0,
             });
-            const savedUser = await queryRunner.manager.save(user_entity_1.User, user);
+            const savedUser = await queryRunner.manager.save(users_entity_1.User, user);
             await queryRunner.commitTransaction();
             this.eventEmitter.emit(user_types_1.UserEvent.USER_REGISTERED, {
                 userId: savedUser.id,
@@ -274,7 +266,7 @@ let UserService = UserService_1 = class UserService {
     async findAll(query, ctx) {
         const { search, role, status, kycStatus, merchantId, page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'DESC', } = query;
         const qb = this.userRepository.createQueryBuilder('user');
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             qb.andWhere('user.merchantId = :merchantId', {
                 merchantId: ctx.merchantId,
             });
@@ -306,9 +298,9 @@ let UserService = UserService_1 = class UserService {
         const user = await this.findByIdRaw(targetUserId);
         this.assertMerchantScope(ctx, user);
         const isSelf = ctx.userId === targetUserId;
-        const isAdmin = ctx.role === user_entity_1.UserRole.SUPER_ADMIN ||
-            ctx.role === user_entity_1.UserRole.MERCHANT_ADMIN ||
-            ctx.role === user_entity_1.UserRole.MERCHANT_OWNER;
+        const isAdmin = ctx.role === users_entity_1.UserRole.SUPER_ADMIN ||
+            ctx.role === users_entity_1.UserRole.MERCHANT_ADMIN ||
+            ctx.role === users_entity_1.UserRole.MERCHANT_OWNER;
         if (!isSelf && !isAdmin) {
             throw new user_exceptions_1.InsufficientPermissionsException('update this user');
         }
@@ -353,16 +345,16 @@ let UserService = UserService_1 = class UserService {
         }
         const user = await this.findByIdRaw(targetUserId);
         this.assertMerchantScope(ctx, user);
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.MERCHANT_OWNER) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.MERCHANT_OWNER) {
             throw new user_exceptions_1.InsufficientPermissionsException('delete users');
         }
-        if (user.role === user_entity_1.UserRole.MERCHANT_OWNER && user.merchantId) {
+        if (user.role === users_entity_1.UserRole.MERCHANT_OWNER && user.merchantId) {
             const ownerCount = await this.userRepository.count({
                 where: {
                     merchantId: user.merchantId,
-                    role: user_entity_1.UserRole.MERCHANT_OWNER,
-                    status: (0, typeorm_2.Not)(user_entity_1.UserStatus.BANNED),
+                    role: users_entity_1.UserRole.MERCHANT_OWNER,
+                    status: (0, typeorm_2.Not)(users_entity_1.UserStatus.BANNED),
                 },
             });
             if (ownerCount <= 1) {
@@ -381,7 +373,7 @@ let UserService = UserService_1 = class UserService {
         return { message: 'User account has been deleted successfully' };
     }
     async restoreUser(targetUserId, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('restore deleted users');
         }
         const user = await this.userRepository.findOne({
@@ -419,11 +411,11 @@ let UserService = UserService_1 = class UserService {
         user.emailVerified = true;
         user.emailVerificationToken = null;
         user.emailVerificationTokenExpiresAt = null;
-        if (user.status === user_entity_1.UserStatus.PENDING_VERIFICATION) {
+        if (user.status === users_entity_1.UserStatus.PENDING_VERIFICATION) {
             user.status =
-                user.role === user_entity_1.UserRole.CUSTOMER
-                    ? user_entity_1.UserStatus.ACTIVE
-                    : user_entity_1.UserStatus.PENDING_APPROVAL;
+                user.role === users_entity_1.UserRole.CUSTOMER
+                    ? users_entity_1.UserStatus.ACTIVE
+                    : users_entity_1.UserStatus.PENDING_APPROVAL;
         }
         await this.userRepository.save(user);
         this.eventEmitter.emit(user_types_1.UserEvent.EMAIL_VERIFIED, {
@@ -448,8 +440,8 @@ let UserService = UserService_1 = class UserService {
                 message: 'If this email is registered and unverified, a verification email has been sent',
             };
         }
-        if (user.status === user_entity_1.UserStatus.BANNED ||
-            user.status === user_entity_1.UserStatus.SUSPENDED) {
+        if (user.status === users_entity_1.UserStatus.BANNED ||
+            user.status === users_entity_1.UserStatus.SUSPENDED) {
             return {
                 message: 'If this email is registered and unverified, a verification email has been sent',
             };
@@ -534,7 +526,7 @@ let UserService = UserService_1 = class UserService {
         return { message: 'Phone number verified successfully' };
     }
     async changePassword(userId, dto, ctx) {
-        if (ctx.userId !== userId && ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.userId !== userId && ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('change another user\'s password');
         }
         if (dto.newPassword !== dto.confirmNewPassword) {
@@ -575,7 +567,7 @@ let UserService = UserService_1 = class UserService {
         };
         if (!user)
             return genericResponse;
-        if (user.status === user_entity_1.UserStatus.BANNED)
+        if (user.status === users_entity_1.UserStatus.BANNED)
             return genericResponse;
         const { token, hashedToken, expiresAt } = this.generateToken(user_types_1.TOKEN_EXPIRY.PASSWORD_RESET);
         user.passwordResetToken = hashedToken;
@@ -614,8 +606,8 @@ let UserService = UserService_1 = class UserService {
         user.passwordResetToken = null;
         user.passwordResetTokenExpiresAt = null;
         user.lastPasswordChangeAt = new Date();
-        if (user.status === user_entity_1.UserStatus.LOCKED) {
-            user.status = user_entity_1.UserStatus.ACTIVE;
+        if (user.status === users_entity_1.UserStatus.LOCKED) {
+            user.status = users_entity_1.UserStatus.ACTIVE;
             user.lockedUntil = null;
             user.failedLoginAttempts = 0;
         }
@@ -642,10 +634,10 @@ let UserService = UserService_1 = class UserService {
         if (user.twoFactorEnabled) {
             throw new user_exceptions_1.TwoFactorAlreadyEnabledException();
         }
-        if (dto.method === user_entity_1.TwoFactorMethod.NONE) {
+        if (dto.method === users_entity_1.TwoFactorMethod.NONE) {
             throw new user_exceptions_1.InsufficientPermissionsException('set 2FA method to none during setup');
         }
-        if (dto.method === user_entity_1.TwoFactorMethod.TOTP) {
+        if (dto.method === users_entity_1.TwoFactorMethod.TOTP) {
             const secret = speakeasy.generateSecret({
                 name: `Cheese (${user.email})`,
                 length: 32,
@@ -658,7 +650,7 @@ let UserService = UserService_1 = class UserService {
                 message: 'Scan the QR code with your authenticator app, then verify with a code',
             };
         }
-        if (dto.method === user_entity_1.TwoFactorMethod.SMS) {
+        if (dto.method === users_entity_1.TwoFactorMethod.SMS) {
             if (!user.phoneNumber || !user.phoneVerified) {
                 throw new user_exceptions_1.InvalidTokenException('verified phone number required for SMS 2FA');
             }
@@ -691,7 +683,7 @@ let UserService = UserService_1 = class UserService {
         const setupData = JSON.parse(setupDataStr);
         const user = await this.findByIdRaw(userId);
         let isValid = false;
-        if (setupData.method === user_entity_1.TwoFactorMethod.TOTP) {
+        if (setupData.method === users_entity_1.TwoFactorMethod.TOTP) {
             isValid = speakeasy.totp.verify({
                 secret: setupData.secret,
                 encoding: 'base32',
@@ -699,8 +691,8 @@ let UserService = UserService_1 = class UserService {
                 window: 1,
             });
         }
-        else if (setupData.method === user_entity_1.TwoFactorMethod.SMS ||
-            setupData.method === user_entity_1.TwoFactorMethod.EMAIL) {
+        else if (setupData.method === users_entity_1.TwoFactorMethod.SMS ||
+            setupData.method === users_entity_1.TwoFactorMethod.EMAIL) {
             const storedCode = await this.redis.get(`2fa_otp:${userId}`);
             isValid = storedCode === dto.code;
             if (isValid)
@@ -739,7 +731,7 @@ let UserService = UserService_1 = class UserService {
         const user = await this.findByIdRaw(userId);
         if (!user.twoFactorEnabled)
             return true;
-        if (user.twoFactorMethod === user_entity_1.TwoFactorMethod.TOTP) {
+        if (user.twoFactorMethod === users_entity_1.TwoFactorMethod.TOTP) {
             const decryptedSecret = this.decryptSecret(user.twoFactorSecret);
             return speakeasy.totp.verify({
                 secret: decryptedSecret,
@@ -748,8 +740,8 @@ let UserService = UserService_1 = class UserService {
                 window: 1,
             });
         }
-        if (user.twoFactorMethod === user_entity_1.TwoFactorMethod.SMS ||
-            user.twoFactorMethod === user_entity_1.TwoFactorMethod.EMAIL) {
+        if (user.twoFactorMethod === users_entity_1.TwoFactorMethod.SMS ||
+            user.twoFactorMethod === users_entity_1.TwoFactorMethod.EMAIL) {
             const storedCode = await this.redis.get(`2fa_login_otp:${userId}`);
             const isValid = storedCode === code;
             if (isValid)
@@ -788,7 +780,7 @@ let UserService = UserService_1 = class UserService {
         };
     }
     async disable2FA(userId, dto, ctx) {
-        if (ctx.userId !== userId && ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.userId !== userId && ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('disable 2FA for another user');
         }
         const user = await this.findByIdRaw(userId);
@@ -801,7 +793,7 @@ let UserService = UserService_1 = class UserService {
         if (!is2FAValid)
             throw new user_exceptions_1.Invalid2FACodeException();
         user.twoFactorEnabled = false;
-        user.twoFactorMethod = user_entity_1.TwoFactorMethod.NONE;
+        user.twoFactorMethod = users_entity_1.TwoFactorMethod.NONE;
         user.twoFactorSecret = null;
         user.twoFactorBackupCodes = null;
         await this.userRepository.save(user);
@@ -836,11 +828,11 @@ let UserService = UserService_1 = class UserService {
         const user = await this.findByIdRaw(targetUserId);
         this.assertMerchantScope(ctx, user);
         if (user_types_1.INTERNAL_ONLY_ROLES.includes(dto.role) &&
-            ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+            ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('assign this role');
         }
-        if (ctx.role === user_entity_1.UserRole.MERCHANT_ADMIN &&
-            dto.role === user_entity_1.UserRole.MERCHANT_OWNER) {
+        if (ctx.role === users_entity_1.UserRole.MERCHANT_ADMIN &&
+            dto.role === users_entity_1.UserRole.MERCHANT_OWNER) {
             throw new user_exceptions_1.InsufficientPermissionsException('promote a user to merchant owner');
         }
         const previousRole = user.role;
@@ -863,18 +855,18 @@ let UserService = UserService_1 = class UserService {
         }
         const user = await this.findByIdRaw(targetUserId);
         this.assertMerchantScope(ctx, user);
-        if (dto.status === user_entity_1.UserStatus.BANNED && ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (dto.status === users_entity_1.UserStatus.BANNED && ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('ban users');
         }
-        if (user.status === user_entity_1.UserStatus.BANNED &&
-            ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (user.status === users_entity_1.UserStatus.BANNED &&
+            ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('reactivate a banned user');
         }
         const previousStatus = user.status;
         user.status = dto.status;
         user.updatedBy = ctx.userId;
-        if (dto.status === user_entity_1.UserStatus.SUSPENDED ||
-            dto.status === user_entity_1.UserStatus.BANNED) {
+        if (dto.status === users_entity_1.UserStatus.SUSPENDED ||
+            dto.status === users_entity_1.UserStatus.BANNED) {
             await this.invalidateAllSessions(targetUserId);
         }
         const updated = await this.userRepository.save(user);
@@ -896,8 +888,8 @@ let UserService = UserService_1 = class UserService {
         return this.toResponseDto(updated);
     }
     async updateTransactionLimits(targetUserId, dto, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.MERCHANT_OWNER) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.MERCHANT_OWNER) {
             throw new user_exceptions_1.InsufficientPermissionsException('update transaction limits');
         }
         const user = await this.findByIdRaw(targetUserId);
@@ -931,9 +923,9 @@ let UserService = UserService_1 = class UserService {
         return this.toResponseDto(updated);
     }
     async unlockUser(targetUserId, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.MERCHANT_OWNER &&
-            ctx.role !== user_entity_1.UserRole.SUPPORT) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.MERCHANT_OWNER &&
+            ctx.role !== users_entity_1.UserRole.SUPPORT) {
             throw new user_exceptions_1.InsufficientPermissionsException('unlock user accounts');
         }
         const user = await this.findByIdRaw(targetUserId);
@@ -951,19 +943,19 @@ let UserService = UserService_1 = class UserService {
         return { message: 'User account has been unlocked' };
     }
     async inviteTeamMember(dto, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.MERCHANT_OWNER &&
-            ctx.role !== user_entity_1.UserRole.MERCHANT_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.role !== users_entity_1.UserRole.MERCHANT_OWNER &&
+            ctx.role !== users_entity_1.UserRole.MERCHANT_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('invite team members');
         }
         if (user_types_1.INTERNAL_ONLY_ROLES.includes(dto.role)) {
             throw new user_exceptions_1.InvalidInviteRoleException(dto.role);
         }
-        if (dto.role === user_entity_1.UserRole.CUSTOMER) {
+        if (dto.role === users_entity_1.UserRole.CUSTOMER) {
             throw new user_exceptions_1.InvalidInviteRoleException(dto.role);
         }
-        if (ctx.role === user_entity_1.UserRole.MERCHANT_ADMIN &&
-            dto.role === user_entity_1.UserRole.MERCHANT_OWNER) {
+        if (ctx.role === users_entity_1.UserRole.MERCHANT_ADMIN &&
+            dto.role === users_entity_1.UserRole.MERCHANT_OWNER) {
             throw new user_exceptions_1.InsufficientPermissionsException('invite users with merchant owner role');
         }
         if (!ctx.merchantId) {
@@ -987,21 +979,21 @@ let UserService = UserService_1 = class UserService {
         await queryRunner.connect();
         await queryRunner.startTransaction();
         try {
-            const invitedUser = queryRunner.manager.create(user_entity_1.User, {
+            const invitedUser = queryRunner.manager.create(users_entity_1.User, {
                 email: normalizedEmail,
                 password: tempPassword,
                 fullName: dto.fullName ?? null,
                 role: dto.role,
-                status: user_entity_1.UserStatus.PENDING_VERIFICATION,
+                status: users_entity_1.UserStatus.PENDING_VERIFICATION,
                 merchantId: ctx.merchantId,
                 emailVerificationToken: hashedToken,
                 emailVerificationTokenExpiresAt: expiresAt,
                 createdBy: ctx.userId,
                 createdFromIp: ctx.ipAddress,
-                kycStatus: user_entity_1.KYCStatus.NOT_STARTED,
+                kycStatus: users_entity_1.KYCStatus.NOT_STARTED,
                 twoFactorEnabled: false,
-                twoFactorMethod: user_entity_1.TwoFactorMethod.NONE,
-                apiAccessEnabled: dto.role === user_entity_1.UserRole.DEVELOPER ? true : false,
+                twoFactorMethod: users_entity_1.TwoFactorMethod.NONE,
+                apiAccessEnabled: dto.role === users_entity_1.UserRole.DEVELOPER ? true : false,
                 emailVerified: false,
                 phoneVerified: false,
                 failedLoginAttempts: 0,
@@ -1009,7 +1001,7 @@ let UserService = UserService_1 = class UserService {
                 language: 'en',
                 preferredCurrency: 'USD',
             });
-            await queryRunner.manager.save(user_entity_1.User, invitedUser);
+            await queryRunner.manager.save(users_entity_1.User, invitedUser);
             await queryRunner.commitTransaction();
             this.eventEmitter.emit(user_types_1.UserEvent.TEAM_MEMBER_INVITED, {
                 userId: invitedUser.id,
@@ -1041,24 +1033,24 @@ let UserService = UserService_1 = class UserService {
         }
     }
     async approveKYC(targetUserId, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.SUPPORT) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.SUPPORT) {
             throw new user_exceptions_1.InsufficientPermissionsException('approve KYC');
         }
         const user = await this.findByIdRaw(targetUserId);
-        if (user.kycStatus === user_entity_1.KYCStatus.APPROVED) {
+        if (user.kycStatus === users_entity_1.KYCStatus.APPROVED) {
             return this.toResponseDto(user);
         }
-        user.kycStatus = user_entity_1.KYCStatus.APPROVED;
+        user.kycStatus = users_entity_1.KYCStatus.APPROVED;
         user.kycApprovedAt = new Date();
         user.kycRejectionReason = null;
-        user.status = user_entity_1.UserStatus.ACTIVE;
+        user.status = users_entity_1.UserStatus.ACTIVE;
         user.updatedBy = ctx.userId;
         const updated = await this.userRepository.save(user);
         this.eventEmitter.emit(user_types_1.UserEvent.KYC_STATUS_CHANGED, {
             userId: user.id,
             email: user.email,
-            kycStatus: user_entity_1.KYCStatus.APPROVED,
+            kycStatus: users_entity_1.KYCStatus.APPROVED,
         });
         await this.audit({
             action: user_types_1.UserAuditAction.KYC_APPROVED,
@@ -1070,20 +1062,20 @@ let UserService = UserService_1 = class UserService {
         return this.toResponseDto(updated);
     }
     async rejectKYC(targetUserId, reason, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.SUPPORT) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.SUPPORT) {
             throw new user_exceptions_1.InsufficientPermissionsException('reject KYC');
         }
         const user = await this.findByIdRaw(targetUserId);
-        user.kycStatus = user_entity_1.KYCStatus.REJECTED;
+        user.kycStatus = users_entity_1.KYCStatus.REJECTED;
         user.kycRejectionReason = reason;
-        user.status = user_entity_1.UserStatus.PENDING_APPROVAL;
+        user.status = users_entity_1.UserStatus.PENDING_APPROVAL;
         user.updatedBy = ctx.userId;
         const updated = await this.userRepository.save(user);
         this.eventEmitter.emit(user_types_1.UserEvent.KYC_STATUS_CHANGED, {
             userId: user.id,
             email: user.email,
-            kycStatus: user_entity_1.KYCStatus.REJECTED,
+            kycStatus: users_entity_1.KYCStatus.REJECTED,
             reason,
         });
         await this.audit({
@@ -1097,8 +1089,8 @@ let UserService = UserService_1 = class UserService {
         return this.toResponseDto(updated);
     }
     async toggleApiAccess(targetUserId, enable, ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN &&
-            ctx.role !== user_entity_1.UserRole.MERCHANT_OWNER) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN &&
+            ctx.role !== users_entity_1.UserRole.MERCHANT_OWNER) {
             throw new user_exceptions_1.InsufficientPermissionsException('manage API access');
         }
         const user = await this.findByIdRaw(targetUserId);
@@ -1139,7 +1131,7 @@ let UserService = UserService_1 = class UserService {
             return;
         await user.incrementFailedLoginAttempts(user_types_1.RATE_LIMIT.MAX_FAILED_LOGIN_ATTEMPTS, user_types_1.RATE_LIMIT.ACCOUNT_LOCK_DURATION_MINUTES);
         await this.userRepository.save(user);
-        if (user.status === user_entity_1.UserStatus.LOCKED) {
+        if (user.status === users_entity_1.UserStatus.LOCKED) {
             this.eventEmitter.emit(user_types_1.UserEvent.ACCOUNT_LOCKED, {
                 userId: user.id,
                 email: user.email,
@@ -1194,19 +1186,19 @@ let UserService = UserService_1 = class UserService {
         return decipher.update(encrypted) + decipher.final('utf8');
     }
     async getUserStats(ctx) {
-        if (ctx.role !== user_entity_1.UserRole.SUPER_ADMIN) {
+        if (ctx.role !== users_entity_1.UserRole.SUPER_ADMIN) {
             throw new user_exceptions_1.InsufficientPermissionsException('view platform statistics');
         }
         const [total, active, pendingVerification, pendingApproval, suspended, banned, locked, kycApproved, kycPending,] = await Promise.all([
             this.userRepository.count(),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.ACTIVE } }),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.PENDING_VERIFICATION } }),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.PENDING_APPROVAL } }),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.SUSPENDED } }),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.BANNED } }),
-            this.userRepository.count({ where: { status: user_entity_1.UserStatus.LOCKED } }),
-            this.userRepository.count({ where: { kycStatus: user_entity_1.KYCStatus.APPROVED } }),
-            this.userRepository.count({ where: { kycStatus: user_entity_1.KYCStatus.UNDER_REVIEW } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.ACTIVE } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.PENDING_VERIFICATION } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.PENDING_APPROVAL } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.SUSPENDED } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.BANNED } }),
+            this.userRepository.count({ where: { status: users_entity_1.UserStatus.LOCKED } }),
+            this.userRepository.count({ where: { kycStatus: users_entity_1.KYCStatus.APPROVED } }),
+            this.userRepository.count({ where: { kycStatus: users_entity_1.KYCStatus.UNDER_REVIEW } }),
         ]);
         return {
             total,
@@ -1224,9 +1216,10 @@ let UserService = UserService_1 = class UserService {
 exports.UserService = UserService;
 exports.UserService = UserService = UserService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
+    __param(0, (0, typeorm_1.InjectRepository)(users_entity_1.User)),
     __param(3, (0, ioredis_1.InjectRedis)()),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.DataSource, typeof (_a = typeof event_emitter_1.EventEmitter2 !== "undefined" && event_emitter_1.EventEmitter2) === "function" ? _a : Object, typeof (_b = typeof ioredis_2.default !== "undefined" && ioredis_2.default) === "function" ? _b : Object])
+        typeorm_2.DataSource,
+        event_emitter_1.EventEmitter2, Function])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

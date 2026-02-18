@@ -232,7 +232,7 @@ class InvalidInviteRoleException extends common_1.BadRequestException {
     }
 }
 exports.InvalidInviteRoleException = InvalidInviteRoleException;
-class VerificationEmailRateLimitException extends common_1.TooManyRequestsException {
+class VerificationEmailRateLimitException extends common_1.BadRequestException {
     constructor(retryAfterSeconds) {
         super({
             code: 'VERIFICATION_EMAIL_RATE_LIMITED',
@@ -242,7 +242,7 @@ class VerificationEmailRateLimitException extends common_1.TooManyRequestsExcept
     }
 }
 exports.VerificationEmailRateLimitException = VerificationEmailRateLimitException;
-class PasswordResetRateLimitException extends common_1.TooManyRequestsException {
+class PasswordResetRateLimitException extends common_1.BadRequestException {
     constructor(retryAfterSeconds) {
         super({
             code: 'PASSWORD_RESET_RATE_LIMITED',

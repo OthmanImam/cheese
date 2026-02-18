@@ -1,0 +1,34 @@
+import { UserService } from './user.service';
+import { CreateUserDto, UpdateUserDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto, ResendVerificationEmailDto, VerifyPhoneDto, Enable2FADto, Verify2FADto, Disable2FADto, Use2FABackupCodeDto, UpdateUserRoleDto, UpdateUserStatusDto, UpdateTransactionLimitsDto, InviteTeamMemberDto, UserQueryDto, UserResponseDto, PaginatedUsersResponseDto, TwoFactorSetupResponseDto, MessageResponseDto } from './user.dto';
+export declare class UserController {
+    private readonly userService;
+    constructor(userService: UserService);
+    register(dto: CreateUserDto, req: any): Promise<UserResponseDto>;
+    verifyEmail(dto: VerifyEmailDto): Promise<MessageResponseDto>;
+    resendVerificationEmail(dto: ResendVerificationEmailDto): Promise<MessageResponseDto>;
+    forgotPassword(dto: ForgotPasswordDto): Promise<MessageResponseDto>;
+    resetPassword(dto: ResetPasswordDto): Promise<MessageResponseDto>;
+    getMe(req: any): Promise<UserResponseDto>;
+    updateMe(dto: UpdateUserDto, req: any): Promise<UserResponseDto>;
+    changePassword(dto: ChangePasswordDto, req: any): Promise<MessageResponseDto>;
+    sendPhoneOtp(req: any): Promise<MessageResponseDto>;
+    verifyPhone(dto: VerifyPhoneDto, req: any): Promise<MessageResponseDto>;
+    setup2FA(dto: Enable2FADto, req: any): Promise<TwoFactorSetupResponseDto>;
+    confirm2FA(dto: Verify2FADto, req: any): Promise<TwoFactorSetupResponseDto>;
+    disable2FA(dto: Disable2FADto, req: any): Promise<MessageResponseDto>;
+    use2FABackupCode(dto: Use2FABackupCodeDto, req: any): Promise<MessageResponseDto>;
+    findAll(query: UserQueryDto, req: any): Promise<PaginatedUsersResponseDto>;
+    getStats(req: any): Promise<Record<string, number>>;
+    inviteTeamMember(dto: InviteTeamMemberDto, req: any): Promise<MessageResponseDto>;
+    findOne(id: string, req: any): Promise<UserResponseDto>;
+    update(id: string, dto: UpdateUserDto, req: any): Promise<UserResponseDto>;
+    remove(id: string, req: any): Promise<MessageResponseDto>;
+    restore(id: string, req: any): Promise<MessageResponseDto>;
+    updateRole(id: string, dto: UpdateUserRoleDto, req: any): Promise<UserResponseDto>;
+    updateStatus(id: string, dto: UpdateUserStatusDto, req: any): Promise<UserResponseDto>;
+    updateLimits(id: string, dto: UpdateTransactionLimitsDto, req: any): Promise<UserResponseDto>;
+    unlock(id: string, req: any): Promise<MessageResponseDto>;
+    approveKyc(id: string, req: any): Promise<UserResponseDto>;
+    rejectKyc(id: string, reason: string, req: any): Promise<UserResponseDto>;
+    toggleApiAccess(id: string, enable: boolean, req: any): Promise<MessageResponseDto>;
+}

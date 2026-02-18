@@ -15,14 +15,21 @@ import {
 } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRedis } from '@nestjs-modules/ioredis';
-import Redis from 'ioredis';
+// import Redis from 'ioredis';
+import type { Redis as RedisType } from 'ioredis';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
 import { plainToInstance } from 'class-transformer';
 
-import { User, UserRole, UserStatus, KYCStatus, TwoFactorMethod } from './user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+  KYCStatus,
+  TwoFactorMethod,
+} from './users.entity';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -100,7 +107,7 @@ export class UserService {
     private readonly eventEmitter: EventEmitter2,
 
     @InjectRedis()
-    private readonly redis: Redis,
+    private readonly redis: RedisType,
   ) {}
 
   // ================================================================
@@ -114,10 +121,7 @@ export class UserService {
    */
   private generateToken(expiryMs: number): TokenResult {
     const token = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + expiryMs);
     return { token, hashedToken, expiresAt };
   }
@@ -133,7 +137,10 @@ export class UserService {
    * Generate backup codes for 2FA recovery
    * Returns pairs: [plainCode, hashedCode]
    */
-  private generateBackupCodes(count = 10): { plain: string[]; hashed: string[] } {
+  private generateBackupCodes(count = 10): {
+    plain: string[];
+    hashed: string[];
+  } {
     const plain: string[] = [];
     const hashed: string[] = [];
 

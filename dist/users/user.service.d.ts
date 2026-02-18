@@ -1,7 +1,7 @@
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import Redis from 'ioredis';
-import { User } from './user.entity';
+import type { Redis as RedisType } from 'ioredis';
+import { User } from './users.entity';
 import { CreateUserDto, UpdateUserDto, ChangePasswordDto, ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto, ResendVerificationEmailDto, VerifyPhoneDto, Enable2FADto, Verify2FADto, Disable2FADto, Use2FABackupCodeDto, UpdateUserRoleDto, UpdateUserStatusDto, UpdateTransactionLimitsDto, InviteTeamMemberDto, UserQueryDto, UserResponseDto, PaginatedUsersResponseDto, TwoFactorSetupResponseDto, MessageResponseDto } from './user.dto';
 import { RequestContext } from './user.types';
 export declare class UserService {
@@ -10,7 +10,7 @@ export declare class UserService {
     private readonly eventEmitter;
     private readonly redis;
     private readonly logger;
-    constructor(userRepository: Repository<User>, dataSource: DataSource, eventEmitter: EventEmitter2, redis: Redis);
+    constructor(userRepository: Repository<User>, dataSource: DataSource, eventEmitter: EventEmitter2, redis: RedisType);
     private generateToken;
     private hashToken;
     private generateBackupCodes;

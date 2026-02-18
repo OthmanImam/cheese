@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
-  TooManyRequestsException,
+//   TooManyRequestsException,
 } from '@nestjs/common';
 
 /**
@@ -257,7 +257,8 @@ export class CrossMerchantAccessException extends ForbiddenException {
   constructor() {
     super({
       code: 'CROSS_MERCHANT_ACCESS',
-      message: 'You do not have access to resources belonging to another merchant',
+      message:
+        'You do not have access to resources belonging to another merchant',
     });
   }
 }
@@ -279,7 +280,7 @@ export class InvalidInviteRoleException extends BadRequestException {
 // RATE LIMIT EXCEPTIONS
 // ================================================================
 
-export class VerificationEmailRateLimitException extends TooManyRequestsException {
+export class VerificationEmailRateLimitException extends BadRequestException {
   constructor(retryAfterSeconds: number) {
     super({
       code: 'VERIFICATION_EMAIL_RATE_LIMITED',
@@ -289,7 +290,7 @@ export class VerificationEmailRateLimitException extends TooManyRequestsExceptio
   }
 }
 
-export class PasswordResetRateLimitException extends TooManyRequestsException {
+export class PasswordResetRateLimitException extends BadRequestException {
   constructor(retryAfterSeconds: number) {
     super({
       code: 'PASSWORD_RESET_RATE_LIMITED',
