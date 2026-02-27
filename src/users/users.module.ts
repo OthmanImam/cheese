@@ -5,7 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { User } from './users.entity'; // ← Changed from './user.entity' to match your import
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { AuditLogModule } from './audit/audit-log';
+import { AuditLogModule } from '../audit/audit-log.module';
 import {
   JwtAuthGuard,
   OptionalJwtAuthGuard,

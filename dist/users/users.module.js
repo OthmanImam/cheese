@@ -14,7 +14,7 @@ const config_1 = require("@nestjs/config");
 const users_entity_1 = require("./users.entity");
 const user_service_1 = require("./user.service");
 const user_controller_1 = require("./user.controller");
-const audit_log_1 = require("./audit/audit-log");
+const audit_log_module_1 = require("../audit/audit-log.module");
 const auth_guards_1 = require("../auth/auth.guards");
 let UserModule = class UserModule {
 };
@@ -33,7 +33,7 @@ exports.UserModule = UserModule = __decorate([
                     },
                 }),
             }),
-            audit_log_1.AuditLogModule,
+            audit_log_module_1.AuditLogModule,
         ],
         controllers: [user_controller_1.UserController],
         providers: [
