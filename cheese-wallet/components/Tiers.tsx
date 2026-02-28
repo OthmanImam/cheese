@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import SectionLabel from "./SectionLabel";
 
 const tiers = [
@@ -57,11 +58,6 @@ const tiers = [
   },
 ];
 
-const handleAnchor = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-  e.preventDefault();
-  const el = document.querySelector(href);
-  if (el) el.scrollIntoView({ behavior: "smooth" });
-};
 
 export default function Tiers() {
   return (
@@ -112,9 +108,8 @@ export default function Tiers() {
                 </li>
               ))}
             </ul>
-            <a
-              href="#join"
-              onClick={(e) => handleAnchor(e, "#join")}
+            <Link
+              href="/waitlist"
               className="tier-btn"
               style={
                 t.btnStyle === "fill"
@@ -131,7 +126,7 @@ export default function Tiers() {
               }}
             >
               {t.btnLabel}
-            </a>
+            </Link>
           </div>
         ))}
       </div>

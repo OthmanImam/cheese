@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 const links = [
   { label: "Offers", href: "#offers" },
@@ -13,6 +14,9 @@ const links = [
 export default function Navbar() {
   const [shrunk, setShrunk] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+  const isHome = pathname === "/";
 
   useEffect(() => {
     const onScroll = () => setShrunk(window.scrollY > 60);
@@ -21,11 +25,14 @@ export default function Navbar() {
   }, []);
 
   const handleAnchor = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith("#")) {
-      e.preventDefault();
-      setMenuOpen(false);
+    if (!href.startsWith("#")) return;
+    e.preventDefault();
+    setMenuOpen(false);
+    if (isHome) {
       const el = document.querySelector(href);
       if (el) el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      router.push(`/${href}`);
     }
   };
 
@@ -65,16 +72,15 @@ export default function Navbar() {
       </ul>
 
       {/* Desktop CTA */}
-      <a
-        href="#join"
-        onClick={(e) => handleAnchor(e, "#join")}
+      <Link
+        href="/waitlist"
         className="hidden md:inline-block"
         style={{ background: "var(--gold)", color: "var(--black)", padding: "11px 26px", fontSize: 12, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", textDecoration: "none", transition: "background 0.3s, transform 0.2s" }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--gold-light)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--gold)"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
       >
         Get Access
-      </a>
+      </Link>
 
       {/* Mobile hamburger */}
       <button
@@ -111,13 +117,13 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
-          <a
-            href="#join"
-            onClick={(e) => handleAnchor(e, "#join")}
+          <Link
+            href="/waitlist"
+            onClick={() => setMenuOpen(false)}
             style={{ background: "var(--gold)", color: "var(--black)", padding: "14px 36px", fontSize: 13, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", textDecoration: "none", marginTop: 12 }}
           >
             Get Access
-          </a>
+          </Link>
         </div>
       )}
     </nav>

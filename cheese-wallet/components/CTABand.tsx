@@ -1,10 +1,6 @@
 "use client";
 
-const handleAnchor = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-  e.preventDefault();
-  const el = document.querySelector(href);
-  if (el) el.scrollIntoView({ behavior: "smooth" });
-};
+import Link from "next/link";
 
 export default function CTABand() {
   return (
@@ -37,15 +33,14 @@ export default function CTABand() {
         Join thousands of smart Nigerians keeping their money in dollars — and earning on it every single week.
       </p>
 
-      <a
-        href="#home"
-        onClick={(e) => handleAnchor(e, "#home")}
+      <Link
+        href="/waitlist"
         style={{ background: "var(--black)", color: "var(--gold)", padding: "19px 52px", fontSize: 13, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", textDecoration: "none", display: "inline-block", position: "relative", transition: "background 0.3s, transform 0.2s" }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--charcoal)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--black)"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}
       >
         Claim Your Early Access →
-      </a>
+      </Link>
 
       <p style={{ fontSize: 11.5, color: "rgba(0,0,0,0.38)", marginTop: 20, letterSpacing: "0.8px", position: "relative" }}>
         No credit card required &nbsp;·&nbsp; Takes 2 minutes &nbsp;·&nbsp; Available on iOS & Android

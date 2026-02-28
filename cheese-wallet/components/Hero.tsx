@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { IconArrowUp, IconArrowDown, IconTrendingUp } from "./Icons";
 
 const handleAnchor = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -56,16 +57,15 @@ export default function Hero() {
         </p>
 
         <div className="hero-anim-4" style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <a
-            href="#join"
-            onClick={(e) => handleAnchor(e, "#join")}
+          <Link
+            href="/waitlist"
             className="btn-gold-shimmer"
             style={{ background: "var(--gold)", color: "var(--black)", padding: "17px 40px", fontSize: 13, fontWeight: 700, letterSpacing: "1.8px", textTransform: "uppercase", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 10, transition: "transform 0.2s" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(-2px)")}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = "translateY(0)")}
           >
             Claim Your Spot →
-          </a>
+          </Link>
           <a
             href="#how"
             onClick={(e) => handleAnchor(e, "#how")}

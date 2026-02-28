@@ -1,4 +1,4 @@
-// File: /Users/Dijha/Desktop/cheese/cheese-wallet/app/layout.tsx
+// File: /Users/Dijha/Desktop/cheese-wallet/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
