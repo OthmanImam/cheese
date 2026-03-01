@@ -1,95 +1,51 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
-import { User } from '../users/users.entity';
-import { Passkey } from './passkey.entity';
-import { AuthService } from './auth.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
-import { WalletService } from './wallet.service';
-import { JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard } from './auth.guards';
-import { UserModule } from '../users/user.module';
+import { AuthService } from './auth.service';
+import { OtpService } from './services/otp.service';
+import { TokenService } from './services/token.service';
+import { WaitlistTokenService } from './services/waitlist-token.service';
+import { UsersService } from './services/users.service';
+import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
+import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { User } from '../users/entities/user.entity';
+import { Otp } from '../otp/entities/otp.entity';
+import { RefreshToken } from '../tokens/entities/refresh-token.entity';
+import { Referral } from '../referrals/entities/referral.entity';
+import { WaitlistReservation } from '../waitlist/entities/waitlist-reservation.entity';
 
-/**
- * AuthModule
- * 
- * Complete authentication system for the Cheese platform.
- * 
- * Features:
- * - 4-step customer signup (email/password → OTP → wallet → passkey)
- * - Email/password login
- * - Passkey (biometric) login
- * - JWT token management
- * - Session management
- * - Blockchain wallet creation
- * 
- * Components:
- * - AuthService: Business logic for signup/login
- * - WalletService: Blockchain wallet creation
- * - AuthController: HTTP endpoints
- * - JwtAuthGuard: Route protection
- * - Passkey entity: WebAuthn credentials storage
- * 
- * Prerequisites (must be configured globally in AppModule):
- * - EventEmitterModule.forRoot()
- * - RedisModule (ioredis)
- * - ConfigModule.forRoot()
- * - TypeOrmModule.forRoot()
- * 
- * Environment Variables Required:
- * - JWT_SECRET: Secret for signing JWT tokens
- * - JWT_EXPIRES_IN: Access token expiry (e.g., "15m")
- * - BLOCKCHAIN_RPC_URL: RPC endpoint for blockchain connection
- * - FACTORY_PRIVATE_KEY: Private key for wallet factory contract
- * - WALLET_FACTORY_ADDRESS: Address of the wallet factory contract
- * - RP_ID: Relying party ID for WebAuthn (your domain, e.g., "cheese.app")
- * - RP_ORIGIN: Origin for WebAuthn (e.g., "https://cheese.app")
- * - ENCRYPTION_KEY: 64-char hex string for encrypting sensitive data
- */
 @Module({
   imports: [
-    // Register entities
-    TypeOrmModule.forFeature([User, Passkey]),
-
-    // JWT configuration
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN', '15m'),
-        },
-      }),
-    }),
-
-    // Passport for strategy support (if needed in future)
     PassportModule.register({ defaultStrategy: 'jwt' }),
-
-    // Import UserModule to access UserService
-    UserModule,
+    JwtModule.register({}), // Secrets injected per-call via ConfigService
+    TypeOrmModule.forFeature([
+      User,
+      Otp,
+      RefreshToken,
+      Referral,
+      WaitlistReservation,
+    ]),
   ],
-
   controllers: [AuthController],
-
   providers: [
     AuthService,
-    WalletService,
-    // Guards
+    OtpService,
+    TokenService,
+    WaitlistTokenService,
+    UsersService,
+    JwtAccessStrategy,
+    JwtRefreshStrategy,
     JwtAuthGuard,
-    OptionalJwtAuthGuard,
-    RolesGuard,
   ],
-
   exports: [
     AuthService,
-    WalletService,
-    // Export guards so other modules can use them
+    TokenService,
+    UsersService,
     JwtAuthGuard,
-    OptionalJwtAuthGuard,
-    RolesGuard,
-    JwtModule, // Export for other modules that need to sign tokens
+    TypeOrmModule,
   ],
 })
 export class AuthModule {}
