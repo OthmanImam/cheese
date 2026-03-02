@@ -11,7 +11,7 @@ const playfair = Playfair_Display({
 
 const syne = Syne({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-syne",
 });
 
@@ -26,6 +26,10 @@ export const metadata: Metadata = {
   description:
     "Cheese holds your money in USDC — digital US dollars — so it stays strong no matter what happens to the Naira. Fund it, spend it, earn yield on it.",
   keywords: ["USDC wallet Nigeria", "dollar wallet Nigeria", "crypto payment Nigeria", "Naira inflation hedge"],
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   openGraph: {
     title: "Cheese Wallet — Hold Dollars. Move Different.",
     description: "Your secure digital dollar wallet for everyday Nigeria.",
