@@ -61,13 +61,12 @@ export class WalletService {
   async createWallet(
     userId: string,
     username: string,
-    evmAddress: string,
   ): Promise<WalletResponseDto> {
     const existing = await this.walletRepo.findOne({ where: { userId } });
     if (existing) throw new WalletAlreadyExistsException(userId);
 
     const chainId         = await this.blockchainService.getChainId();
-    const contractAddress = this.blockchainService.getContractAddress();
+    const contractAddress = this.blockchainService.getFactoryAddress();
 
     // Insert PENDING wallet immediately — claims the userId slot
     const wallet = await this.walletRepo.save(
@@ -96,7 +95,7 @@ export class WalletService {
     );
 
     try {
-      const result = await this.blockchainService.createWallet(evmAddress, username);
+      const result = await this.blockchainService.createWallet(userId, username);
 
       // Update wallet to ACTIVE
       await this.walletRepo.update(wallet.id, {
@@ -142,7 +141,7 @@ export class WalletService {
    * Retry wallet creation for a PENDING wallet.
    * Called by BlockchainScheduler — not exposed via HTTP.
    */
-  async retryWalletCreation(walletId: string, evmAddress: string): Promise<void> {
+  async retryWalletCreation(walletId: string): Promise<void> {
     const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
     if (!wallet || wallet.status !== WalletStatus.PENDING) return;
 
@@ -167,9 +166,8 @@ export class WalletService {
     );
 
     try {
-      const platformAddress = this.blockchainService.getSignerAddress();
       const result = await this.blockchainService.createWallet(
-        evmAddress || platformAddress,
+        wallet.userId,
         wallet.registeredUsername,
       );
 
