@@ -1,12 +1,12 @@
-'use client';
+'use client'
 
 // ─────────────────────────────────────────────────────────
 // CHEESE WALLET — React Query Provider
 // ─────────────────────────────────────────────────────────
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { useState, type ReactNode } from 'react'
 
 function makeQueryClient() {
   return new QueryClient({
@@ -14,11 +14,11 @@ function makeQueryClient() {
       queries: {
         // Data is considered fresh for 30s by default.
         // Individual hooks override this with STALE_TIMES constants.
-        staleTime: 30_000,
+        staleTime:     30_000,
 
         // Retry failed requests twice before surfacing the error.
-        retry: 2,
-        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+        retry:         2,
+        retryDelay:    (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
 
         // Refetch when the user returns to the tab
         refetchOnWindowFocus: true,
@@ -31,16 +31,16 @@ function makeQueryClient() {
         retry: 0,
       },
     },
-  });
+  })
 }
 
 // Singleton for server rendering; fresh instance per browser session
-let browserQueryClient: QueryClient | undefined;
+let browserQueryClient: QueryClient | undefined
 
 function getQueryClient() {
-  if (typeof window === 'undefined') return makeQueryClient();
-  if (!browserQueryClient) browserQueryClient = makeQueryClient();
-  return browserQueryClient;
+  if (typeof window === 'undefined') return makeQueryClient()
+  if (!browserQueryClient) browserQueryClient = makeQueryClient()
+  return browserQueryClient
 }
 
 export function QueryProvider({ children }: { children: ReactNode }) {
@@ -54,5 +54,5 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
       )}
     </QueryClientProvider>
-  );
+  )
 }

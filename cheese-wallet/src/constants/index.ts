@@ -7,7 +7,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.chee
 export const ENDPOINTS = {
   // ── Auth ──────────────────────────────────────────────
   AUTH: {
-    LOGIN: '/auth/login',
+    LOGIN:            '/auth/login',
     LOGOUT:           '/auth/logout',
     REFRESH:          '/auth/refresh',
     SIGNUP:           '/auth/signup',
@@ -84,7 +84,7 @@ export const ENDPOINTS = {
 // Centralised so invalidation is consistent across the app
 export const QUERY_KEYS = {
   // Auth
-  ME: ['auth', 'me'] as const,
+  ME:                   ['auth', 'me'] as const,
 
   // Wallet
   BALANCE:              ['wallet', 'balance'] as const,
