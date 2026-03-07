@@ -179,6 +179,10 @@ export interface VirtualCard {
   availableBalance: string
   monthlySpend: string
   spendLimit: string
+  last4: string          // "4291"
+expiryMonth: string    // "08"  
+expiryYear: string     // "27"
+holderName: string     // "Seun Adeyemi"
 }
 
 // ── API wrappers ──────────────────────────────────────────
