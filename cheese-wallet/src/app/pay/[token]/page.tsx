@@ -361,7 +361,7 @@ function PayPageInner({ token }: { token: string }) {
 
     try {
       const pinHash = await hashPin(pin, deviceKey.deviceId)
-      const deviceSignature = await signTransaction({
+      const { deviceSignature } = await signTransaction({
         userId:    user!.id,
         amount:    link.amountUsdc,
         recipient: link.creator.username,
