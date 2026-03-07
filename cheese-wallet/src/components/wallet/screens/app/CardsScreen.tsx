@@ -13,7 +13,7 @@ export function CardsScreen() {
   const { goTo, showToast }   = useUiStore()
   const { data: balance }     = useBalance()
   const { data: card }        = useCard()
-  const usd = balance?.usdBalance ?? 0
+  const usd = parseFloat(balance?.usdc ?? '0')
 
   return (
     <div className="screen active" id="screen-cards">
@@ -132,7 +132,7 @@ export function CardDetailScreen() {
     }
   }
 
-  const usd = balance?.usdBalance ?? 0
+  const usd = parseFloat(balance?.usdc ?? '0')
   const { data: cardTxs, isLoading: txLoading } = useCardTransactions()
 
   return (
