@@ -20,8 +20,8 @@ export function HomeScreen() {
   const { data: rate }        = useExchangeRate()
   const { data: txData, isLoading: txLoading } = useTransactions(1)
 
-  const usd = parseFloat(balance?.usdc ?? '0')
-const ngn = parseFloat(balance?.ngnEquivalent ?? '0')
+  const usd  = parseFloat(balance?.usdc ?? '0')
+  const ngn  = parseFloat(balance?.ngnEquivalent ?? '0')
   const txs  = txData?.items  ?? []
   const rateVal = rate?.effectiveRate ?? 1610
 
