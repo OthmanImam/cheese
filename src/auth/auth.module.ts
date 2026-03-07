@@ -4,6 +4,8 @@ import { JwtModule }      from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
 import { TypeOrmModule }  from '@nestjs/typeorm'
 import { OtpModule }      from '../otp/otp.module'
+import { EmailModule }    from '../email/email.module'
+import { WaitlistModule } from '../waitlist/waitlist.module'
 import { StellarModule }  from '../stellar/stellar.module'
 import { Device }         from '../devices/entities/device.entity'
 import { AuthController } from './auth.controller'
@@ -20,9 +22,11 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy'
     JwtModule.register({}),   // secrets supplied per sign() call
     OtpModule,
     StellarModule,
+    EmailModule,
+    WaitlistModule,
   ],
   controllers: [AuthController],
   providers:   [AuthService, JwtAccessStrategy, JwtRefreshStrategy],
-  exports:     [AuthService, TypeOrmModule],
+  exports:     [AuthService, TypeOrmModule, WaitlistModule],
 })
 export class AuthModule {}

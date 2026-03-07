@@ -49,3 +49,10 @@ export const ratesConfig = registerAs('rates', () => ({
   exchangeRateUrl:  process.env.EXCHANGE_RATE_URL,
   ngnSpreadPercent: parseFloat(process.env.NGN_SPREAD_PERCENT || '1.5'),
 }))
+
+export const emailConfig = registerAs('email', () => ({
+  zeptoApiKey:   process.env.ZEPTOMAIL_API_KEY || '',
+  fromAddress:   process.env.ZEPTOMAIL_FROM_ADDRESS || 'noreply@cheesewallet.app',
+  fromName:      process.env.ZEPTOMAIL_FROM_NAME    || 'Cheese Wallet',
+  replyTo:       process.env.ZEPTOMAIL_REPLY_TO     || 'support@cheesewallet.app',
+}))

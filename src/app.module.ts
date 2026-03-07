@@ -28,6 +28,8 @@ import { NotificationsModule } from './notifications/notifications.module'
 import { ProfileModule }      from './profile/profile.module'
 import { EarnModule }         from './earn/earn.module'
 import { ReferralModule }     from './referral/referral.module'
+import { EmailModule }        from './email/email.module'
+import { WaitlistModule }     from './waitlist/waitlist.module'
 
 import { User }          from './auth/entities/user.entity'
 import { RefreshToken }  from './auth/entities/refresh-token.entity'
@@ -40,12 +42,14 @@ import { VirtualCard }   from './cards/entities/virtual-card.entity'
 import { Notification }  from './notifications/entities/notification.entity'
 import { EarnPosition }  from './earn/entities/earn-position.entity'
 import { Referral }      from './referral/entities/referral.entity'
+import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity'
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load:     [appConfig, dbConfig, jwtConfig, redisConfig, stellarConfig, otpConfig, ratesConfig],
+      // email config is registered inside emailConfig in app.config.ts
       envFilePath: ['.env'],
     }),
     ScheduleModule.forRoot(),
@@ -69,7 +73,7 @@ import { Referral }      from './referral/entities/referral.entity'
           User, RefreshToken, Device, Otp,
           Transaction, ExchangeRate,
           BankTransfer, VirtualCard,
-          Notification, EarnPosition, Referral,
+          Notification, EarnPosition, Referral, WaitlistEntry,
         ],
         synchronize: config.get('app.nodeEnv') !== 'production',
         logging:     config.get('app.nodeEnv') === 'development',

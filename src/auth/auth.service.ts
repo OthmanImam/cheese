@@ -18,6 +18,8 @@ import {
   ChangePinDto, ForgotPasswordDto, LoginDto,
   ResetPasswordDto, SignupDto, VerifyOtpDto, VerifyPinDto,
 } from './dto'
+import { EmailService }    from '../email/email.service'
+import { WaitlistService } from '../waitlist/waitlist.service'
 import { RefreshToken } from './entities/refresh-token.entity'
 import { User }          from './entities/user.entity'
 
@@ -36,6 +38,8 @@ export class AuthService {
     private readonly config:         ConfigService,
     private readonly otpService:     OtpService,
     private readonly stellarService: StellarService,
+    private readonly emailService:   EmailService,
+    private readonly waitlistService: WaitlistService,
   ) {}
 
   // ── Signup ────────────────────────────────────────────────
@@ -49,6 +53,9 @@ export class AuthService {
       if (exists.phone    === dto.phone)    throw new ConflictException('Phone already registered')
       if (exists.username === dto.username) throw new ConflictException('Username taken')
     }
+
+    // If username is waitlist-reserved, enforce email match
+    await this.waitlistService.assertUsernameClaimAllowed(dto.username, dto.email)
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS)
 
@@ -74,6 +81,9 @@ export class AuthService {
 
     await this.userRepo.save(user)
 
+    // Mark waitlist entry as converted (non-blocking)
+    this.waitlistService.markConverted(dto.email).catch(() => {})
+
     // Register the device
     await this.deviceRepo.save(this.deviceRepo.create({
       userId:     user.id,
@@ -83,7 +93,7 @@ export class AuthService {
     }))
 
     // Send email verification OTP
-    await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY)
+    await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, { fullName: dto.fullName })
 
     return { userId: user.id, email: user.email }
   }
@@ -93,7 +103,14 @@ export class AuthService {
     await this.otpService.verifyOtp(dto.email, dto.otp, dto.type)
 
     if (dto.type === OtpType.EMAIL_VERIFY) {
+      const user = await this.userRepo.findOne({ where: { email: dto.email } })
       await this.userRepo.update({ email: dto.email }, { emailVerified: true })
+      if (user) {
+        this.emailService.sendSignupSuccess({
+          to: user.email, fullName: user.fullName, username: user.username,
+          appUrl: this.config.get('app.frontendUrl') + '/wallet',
+        }).catch(() => {})
+      }
     }
 
     return { verified: true }
@@ -168,6 +185,11 @@ export class AuthService {
     await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.PASSWORD_RESET)
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS)
     await this.userRepo.update({ email: dto.email }, { passwordHash })
+    // Notify user of password change
+    const pwUser = await this.userRepo.findOne({ where: { email: dto.email } })
+    if (pwUser) {
+      this.emailService.sendPasswordChanged({ to: dto.email, fullName: pwUser.fullName }).catch(() => {})
+    }
     // Revoke all refresh tokens on password change
     await this.rtRepo.update({ userId: (await this.userRepo.findOne({ where: { email: dto.email } }))?.id }, { isRevoked: true })
   }
