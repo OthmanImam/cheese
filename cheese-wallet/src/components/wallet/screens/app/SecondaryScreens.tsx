@@ -281,7 +281,7 @@ export function AppLockScreen() {
           error={err}
           label=""
         />
-        <div className="applock-forgot" onClick={() => goTo('login')}>
+        <div className="applock-forgot" onClick={() => logout()}>
           Forgot PIN? Sign in again
         </div>
       </div>
@@ -510,7 +510,7 @@ export function SecurityScreen() {
         <div className="security-section">
           <div className="security-section-title">Authentication</div>
 
-          <div className="security-item" onClick={() => goTo('login')}>
+          <div className="security-item" onClick={() => logout()}>
             <div className="security-item-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
