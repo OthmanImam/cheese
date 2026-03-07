@@ -15,6 +15,7 @@ export enum TxType {
   REFERRAL_BONUS   = 'referral_bonus',
   CARD_PAYMENT     = 'card_payment',
   FEE              = 'fee',
+  PAY_REQUEST      = 'pay_request',   // payment via PayLink
 }
 
 export enum TxStatus {

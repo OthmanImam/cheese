@@ -30,6 +30,7 @@ import { EarnModule }         from './earn/earn.module'
 import { ReferralModule }     from './referral/referral.module'
 import { EmailModule }        from './email/email.module'
 import { WaitlistModule }     from './waitlist/waitlist.module'
+import { PayLinkModule }      from './paylink/paylink.module'
 
 import { User }          from './auth/entities/user.entity'
 import { RefreshToken }  from './auth/entities/refresh-token.entity'
@@ -42,7 +43,8 @@ import { VirtualCard }   from './cards/entities/virtual-card.entity'
 import { Notification }  from './notifications/entities/notification.entity'
 import { EarnPosition }  from './earn/entities/earn-position.entity'
 import { Referral }      from './referral/entities/referral.entity'
-import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity'
+import { WaitlistEntry }   from './waitlist/entities/waitlist-entry.entity'
+import { PaymentRequest } from './paylink/entities/payment-request.entity'
 
 @Module({
   imports: [
@@ -73,7 +75,7 @@ import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity'
           User, RefreshToken, Device, Otp,
           Transaction, ExchangeRate,
           BankTransfer, VirtualCard,
-          Notification, EarnPosition, Referral, WaitlistEntry,
+          Notification, EarnPosition, Referral, WaitlistEntry, PaymentRequest,
         ],
         synchronize: config.get('app.nodeEnv') !== 'production',
         logging:     config.get('app.nodeEnv') === 'development',
@@ -96,6 +98,8 @@ import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity'
     NotificationsModule, ProfileModule,
     // Phase 7
     EarnModule, ReferralModule,
+    // Email + Waitlist + PayLink
+    WaitlistModule, EmailModule, PayLinkModule,
   ],
   providers: [
     { provide: APP_GUARD,       useClass: JwtAccessGuard },
