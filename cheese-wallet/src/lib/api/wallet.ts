@@ -232,3 +232,44 @@ export async function getReferralInfo(): Promise<ReferralInfo> {
   )
   return data.data
 }
+
+// ── PayLink ───────────────────────────────────────────────
+import type {
+  CreatePayLinkPayload, CreatePayLinkResponse,
+  PayLinkData, PayLinkPayPayload, PayLinkPayResponse, MyLinksResponse,
+} from '@/types'
+
+export async function createPayLink(payload: CreatePayLinkPayload): Promise<CreatePayLinkResponse> {
+  const { data } = await apiClient.post<import('@/types').ApiResponse<CreatePayLinkResponse>>(
+    ENDPOINTS.PAYLINK.CREATE,
+    payload,
+  )
+  return data.data
+}
+
+export async function resolvePayLink(token: string): Promise<PayLinkData> {
+  const { data } = await apiClient.get<import('@/types').ApiResponse<PayLinkData>>(
+    ENDPOINTS.PAYLINK.RESOLVE(token),
+  )
+  return data.data
+}
+
+export async function payPayLink(token: string, payload: PayLinkPayPayload): Promise<PayLinkPayResponse> {
+  const { data } = await apiClient.post<import('@/types').ApiResponse<PayLinkPayResponse>>(
+    ENDPOINTS.PAYLINK.PAY(token),
+    payload,
+  )
+  return data.data
+}
+
+export async function getMyPayLinks(page = 1, pageSize = 20): Promise<MyLinksResponse> {
+  const { data } = await apiClient.get<import('@/types').ApiResponse<MyLinksResponse>>(
+    ENDPOINTS.PAYLINK.MY,
+    { params: { page, pageSize } },
+  )
+  return data.data
+}
+
+export async function cancelPayLink(token: string): Promise<void> {
+  await apiClient.delete(ENDPOINTS.PAYLINK.CANCEL(token))
+}

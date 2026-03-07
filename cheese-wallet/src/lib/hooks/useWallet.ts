@@ -189,3 +189,57 @@ export function useCardTransactions(limit = 10) {
     staleTime: STALE_TIMES.TRANSACTIONS,
   })
 }
+
+// ── PayLink ───────────────────────────────────────────────
+export function useCreatePayLink() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: walletApi.createPayLink,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_MY })
+    },
+  })
+}
+
+export function useResolvePayLink(token: string) {
+  return useQuery({
+    queryKey:  QUERY_KEYS.PAYLINK_TOKEN(token),
+    queryFn:   () => walletApi.resolvePayLink(token),
+    enabled:   !!token,
+    staleTime: 30_000,
+    retry:     false,
+  })
+}
+
+export function useMyPayLinks(page = 1) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  return useQuery({
+    queryKey:  [...QUERY_KEYS.PAYLINK_MY, page],
+    queryFn:   () => walletApi.getMyPayLinks(page),
+    enabled:   isAuthenticated,
+    staleTime: 30_000,
+  })
+}
+
+export function usePayPayLink() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ token, payload }: { token: string; payload: import('@/types').PayLinkPayPayload }) =>
+      walletApi.payPayLink(token, payload),
+    onSuccess: (_data, { token }) => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_TOKEN(token) })
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.BALANCE })
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_MY })
+    },
+  })
+}
+
+export function useCancelPayLink() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: walletApi.cancelPayLink,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.PAYLINK_MY })
+    },
+  })
+}

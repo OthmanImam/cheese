@@ -205,3 +205,66 @@ export type AuthScreen =
   | 'splash' | 'login' | 'signup-1' | 'signup-2' | 'signup-3'
   | 'signup-otp' | 'device' | 'forgot-email' | 'forgot-otp'
   | 'new-password' | 'pw-success'
+
+// ── PayLink ───────────────────────────────────────────────
+export type PayLinkStatus = 'pending' | 'paid' | 'expired' | 'cancelled'
+
+export interface PayLinkCreator {
+  username: string
+  fullName: string
+}
+
+export interface PayLinkPayer {
+  username: string
+}
+
+export interface PayLinkData {
+  id:         string
+  token:      string
+  url:        string
+  amountUsdc: string
+  note:       string | null
+  status:     PayLinkStatus
+  expiresAt:  string
+  createdAt:  string
+  creator:    PayLinkCreator
+  payer:      PayLinkPayer | null
+  paidAt:     string | null
+}
+
+export interface CreatePayLinkPayload {
+  amountUsdc:     string
+  note?:          string
+  expiresInHours?: number
+}
+
+export interface CreatePayLinkResponse {
+  id:             string
+  url:            string
+  token:          string
+  amountUsdc:     string
+  note:           string | null
+  expiresAt:      string
+  expiresInHours: number
+}
+
+export interface PayLinkPayPayload {
+  pinHash:         string
+  deviceId:        string
+  deviceSignature: string
+}
+
+export interface PayLinkPayResponse {
+  txId:       string
+  txHash:     string
+  amountUsdc: string
+  fee:        string
+  paidAt:     string
+}
+
+export interface MyLinksResponse {
+  data:     PayLinkData[]
+  total:    number
+  page:     number
+  pageSize: number
+}

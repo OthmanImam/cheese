@@ -26,6 +26,7 @@ import {
   EarnScreen,
   SupportScreen,
 } from './screens/app/SecondaryScreens'
+import { PayLinkScreen } from './screens/app/PayLinkScreen'
 import {
   AddFundsModal,
   CryptoDepositModal,
@@ -170,6 +171,7 @@ function AppScreens() {
           {activeView === 'security'      && <SecurityScreen />}
           {activeView === 'earn'          && <EarnScreen />}
           {activeView === 'support'       && <SupportScreen />}
+          {activeView === 'paylink'       && <PayLinkScreen />}
           {activeView === 'applock'       && <AppLockScreen />}
         </>
       )}

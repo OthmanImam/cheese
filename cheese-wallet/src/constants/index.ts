@@ -101,6 +101,15 @@ export const ENDPOINTS = {
     CHANGE_PASSWORD:  '/profile/change-password',
     CHANGE_PIN:       '/profile/change-pin',
   },
+
+  // ── PayLink ───────────────────────────────────────────
+  PAYLINK: {
+    CREATE:           '/paylink',
+    MY:               '/paylink/my',
+    RESOLVE:          (token: string) => `/paylink/${token}`,
+    PAY:              (token: string) => `/paylink/${token}/pay`,
+    CANCEL:           (token: string) => `/paylink/${token}`,
+  },
 } as const
 
 // ── React Query Keys ──────────────────────────────────────
@@ -147,6 +156,10 @@ export const QUERY_KEYS = {
 
   // Devices
   DEVICES:              ['devices'] as const,
+
+  // PayLink
+  PAYLINK_MY:           ['paylink', 'my'] as const,
+  PAYLINK_TOKEN:        (token: string) => ['paylink', token] as const,
 } as const
 
 // ── Stale times ───────────────────────────────────────────

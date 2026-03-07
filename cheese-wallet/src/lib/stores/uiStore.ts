@@ -9,7 +9,7 @@ import type { Theme } from '@/types'
 export type AppView =
   | 'home' | 'send' | 'cards' | 'cardscreen' | 'history' | 'profile'
   | 'notifications' | 'txdetail' | 'kyc' | 'security' | 'profile-edit'
-  | 'earn' | 'support' | 'applock'
+  | 'earn' | 'support' | 'applock' | 'paylink'
 
 export type ModalId  = 'addFunds' | 'cryptoDeposit' | 'askReceive' | 'bankFlow' | null
 export type SendMethod = 'username' | 'account' | 'evm' | 'qr' | null
