@@ -513,7 +513,7 @@ export function BankFlowModal() {
                   </div>
                 ))}
               </div>
-              <button className="bflow-next-btn" onClick={() => { setPin(''); setPinErr(false); setBankStep('pin') }}>
+              <button className="bflow-next-btn" onClick={() => { setPin(''); setPinErr(null); setBankStep('pin') }}>
                 Confirm & Enter PIN
               </button>
             </div>
