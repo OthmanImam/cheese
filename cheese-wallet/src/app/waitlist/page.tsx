@@ -1,242 +1,478 @@
 'use client'
+import { useState, useEffect, useRef } from 'react'
+import { useRouter }                    from 'next/navigation'
+import Link                             from 'next/link'
+import { API_BASE_URL }                 from '@/constants'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import WaitlistForm from '@/components/waitlist/WaitlistForm'
-import ReservationCard from '@/components/waitlist/ReservationCard'
-import SuccessModal from '@/components/waitlist/SuccessModal'
+// ── Types ────────────────────────────────────────────────────
+type Step = 'form' | 'success'
+type Availability = 'idle' | 'checking' | 'available' | 'taken' | 'error'
 
-const SOCIAL_PROOF = [
-  { n: '4,831', l: 'Spots claimed' },
-  { n: '169',   l: 'Remaining' },
-  { n: '3 mo',  l: 'Username lock' },
-]
+// ── Helpers ─────────────────────────────────────────────────
+function sanitiseUsername(v: string) {
+  return v.toLowerCase().replace(/^@/, '').replace(/[^a-z0-9_]/g, '')
+}
 
+// ── Page ─────────────────────────────────────────────────────
 export default function WaitlistPage() {
-  const [successData, setSuccessData] = useState<{ username: string; email: string; position?: number | null } | null>(null)
+  const router = useRouter()
+  const [step, setStep]           = useState<Step>('form')
+  const [email, setEmail]         = useState('')
+  const [username, setUsername]   = useState('')
+  const [avail, setAvail]         = useState<Availability>('idle')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [position, setPosition]   = useState<number | null>(null)
+  const debounceRef               = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // ── Username availability check (debounced 500ms) ─────────
+  useEffect(() => {
+    if (username.length < 3) { setAvail('idle'); return }
+    setAvail('checking')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res  = await fetch(`${API_BASE_URL}/waitlist/check/${username}`)
+        const data = await res.json()
+        setAvail(data?.data?.available ? 'available' : 'taken')
+      } catch {
+        setAvail('error')
+      }
+    }, 500)
+  }, [username])
+
+  // ── Submit ────────────────────────────────────────────────
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    if (!email) { setError('Please enter your email address.'); return }
+    if (username.length < 3) { setError('Username must be at least 3 characters.'); return }
+    if (avail === 'taken') { setError('That username is already reserved. Try another.'); return }
+
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/waitlist/join`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, username }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        const msg = data?.message ?? data?.error ?? 'Something went wrong. Please try again.'
+        setError(Array.isArray(msg) ? msg[0] : msg)
+        return
+      }
+      setPosition(data?.data?.position ?? null)
+      setStep('success')
+    } catch {
+      setError('Network error — please check your connection and try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── Availability indicator ─────────────────────────────────
+  function AvailBadge() {
+    if (username.length < 3 || avail === 'idle') return null
+    if (avail === 'checking') return (
+      <span style={badge('#888', 'rgba(255,255,255,0.06)')}>
+        <span style={spin} /> Checking…
+      </span>
+    )
+    if (avail === 'available') return (
+      <span style={badge('#4ade80', 'rgba(74,222,128,0.1)')}>✓ Available</span>
+    )
+    if (avail === 'taken') return (
+      <span style={badge('#f87171', 'rgba(248,113,113,0.1)')}>✗ Already taken</span>
+    )
+    return null
+  }
+
+  // ── Success state ─────────────────────────────────────────
+  if (step === 'success') {
+    return (
+      <main style={pageWrap}>
+        <Nav />
+        <div style={cardWrap}>
+          <div style={{ ...card, textAlign: 'center', padding: '56px 40px' }}>
+            <div style={successIcon}>🧀</div>
+            <h1 style={{ ...h1, fontSize: 32, marginBottom: 12 }}>
+              You&apos;re in.
+            </h1>
+            <p style={{ ...sub, maxWidth: 340, margin: '0 auto 8px' }}>
+              <strong style={{ color: '#C9A84C' }}>@{username}</strong> is reserved for you.
+              We&apos;ll email <strong style={{ color: '#F5F5F5' }}>{email}</strong> the moment Cheese launches.
+            </p>
+            {position && (
+              <div style={positionBadge}>
+                #{position.toLocaleString()} in line
+              </div>
+            )}
+            <p style={{ ...sub, fontSize: 13, color: '#555', margin: '20px auto 0', maxWidth: 320 }}>
+              Share your link to move up the list and unlock early perks.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/waitlist`
+                  navigator.clipboard?.writeText(`${url}?ref=${username}`)
+                    .catch(() => {})
+                }}
+                style={btnSecondary}
+              >
+                Copy Referral Link
+              </button>
+              <Link href="/" style={{ ...btnGold, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+                Back to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+        <BgGlow />
+      </main>
+    )
+  }
+
+  // ── Form state ────────────────────────────────────────────
   return (
-    <>
-      {/* ── Navbar ── */}
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        padding: '22px 6%',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
-        background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)',
-      }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 20h20L12 3 2 20z"/>
-            <circle cx="9.5" cy="15" r="1.25" strokeWidth={1.5}/>
-            <circle cx="14.5" cy="13.5" r="1" strokeWidth={1.5}/>
-            <circle cx="12" cy="18" r="0.875" strokeWidth={1.5}/>
-          </svg>
-          <span style={{ fontFamily: 'var(--font-bebas)', fontSize: 20, letterSpacing: 3, color: 'var(--cream)' }}>CHEESE</span>
-        </Link>
-        <Link
-          href="/"
-          style={{ fontSize: 12, fontWeight: 500, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(245,238,216,0.35)', textDecoration: 'none', transition: 'color 0.3s' }}
-          onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = 'var(--gold)')}
-          onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = 'rgba(245,238,216,0.35)')}
-        >
-          ← Back to Home
-        </Link>
-      </nav>
+    <main style={pageWrap}>
+      <Nav />
+      <div style={cardWrap}>
+        <div style={card}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 36 }}>
+            <div style={spotsBar}>
+              <span style={blinkDot} />
+              Only 5,000 name reservations available
+            </div>
+            <h1 style={h1}>Reserve your name.</h1>
+            <p style={sub}>
+              Claim your @username before launch. Free forever — no card needed.
+              Be first in line when Cheese goes live.
+            </p>
+          </div>
 
-      <main style={{ minHeight: '100vh', paddingTop: 90, background: 'var(--black)', position: 'relative', overflow: 'hidden' }}>
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Email */}
+            <div>
+              <label style={label}>Email address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="tunde@example.com"
+                autoComplete="email"
+                required
+                style={input}
+              />
+            </div>
 
-        {/* Ambient glows */}
-        <div style={{ position: 'absolute', top: -160, right: -200, width: 700, height: 700, background: 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 65%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: 0, left: -150, width: 600, height: 600, background: 'radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 65%)', pointerEvents: 'none' }} />
+            {/* Username */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label style={{ ...label, marginBottom: 0 }}>Reserve a username</label>
+                <AvailBadge />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={atSign}>@</span>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(sanitiseUsername(e.target.value))}
+                  placeholder="your_username"
+                  autoComplete="username"
+                  maxLength={20}
+                  style={{ ...input, paddingLeft: 36,
+                    borderColor: avail === 'available' ? 'rgba(74,222,128,0.4)'
+                               : avail === 'taken'     ? 'rgba(248,113,113,0.4)'
+                               : 'rgba(255,255,255,0.08)',
+                  }}
+                />
+              </div>
+              <div style={hint}>3–20 chars · letters, numbers, underscores</div>
+            </div>
 
-        {/* ── Social proof strip ── */}
-        <div style={{
-          background: 'var(--charcoal)',
-          borderBottom: '1px solid rgba(201,168,76,0.1)',
-          padding: '14px 6%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 48, flexWrap: 'wrap',
-        }}>
-          {SOCIAL_PROOF.map((s) => (
-            <div key={s.l} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontFamily: 'var(--font-bebas)', fontSize: 22, letterSpacing: 2, color: 'var(--gold)' }}>{s.n}</span>
-              <span style={{ fontSize: 11, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(245,238,216,0.35)' }}>{s.l}</span>
+            {/* Error */}
+            {error && (
+              <div style={errorBox}>{error}</div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading || avail === 'taken' || avail === 'checking'}
+              style={{
+                ...btnGold,
+                width: '100%',
+                height: 54,
+                fontSize: 16,
+                marginTop: 4,
+                opacity: (loading || avail === 'taken' || avail === 'checking') ? 0.5 : 1,
+                cursor: (loading || avail === 'taken' || avail === 'checking') ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Reserving…' : 'Reserve My Name →'}
+            </button>
+
+            <p style={{ textAlign: 'center', fontSize: 12, color: '#444', marginTop: 4 }}>
+              Free · No credit card · You&apos;ll be first to know at launch
+            </p>
+          </form>
+        </div>
+
+        {/* Perks below form */}
+        <div style={perksRow}>
+          {[
+            ['🔒', 'Your name is locked in'],
+            ['⚡', 'First access at launch'],
+            ['💰', 'Early adopter perks'],
+          ].map(([icon, text]) => (
+            <div key={text} style={perkItem}>
+              <span style={{ fontSize: 18 }}>{icon}</span>
+              <span style={{ fontSize: 13, color: '#666' }}>{text}</span>
             </div>
           ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'rgba(245,238,216,0.4)' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3CB87A', display: 'inline-block', animation: 'blink 1.5s ease-in-out infinite' }} />
-            List open
-          </div>
         </div>
+      </div>
+      <BgGlow />
+    </main>
+  )
+}
 
-        {/* ── Main content ── */}
-        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '80px 6% 120px' }}>
-
-          <Link
-            href="/"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              fontSize: 12, fontWeight: 500, letterSpacing: '1.5px',
-              textTransform: 'uppercase', color: 'rgba(245,238,216,0.35)',
-              textDecoration: 'none', marginBottom: 56, transition: 'color 0.3s',
-            }}
-            onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = 'var(--gold)')}
-            onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = 'rgba(245,238,216,0.35)')}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-            Back to Home
-          </Link>
-
-          {/* Two-column grid */}
-          <div className="waitlist-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'start' }}>
-
-            {/* ── Left: copy ── */}
-            <div>
-              <div style={{ fontSize: 10.5, letterSpacing: '3.5px', textTransform: 'uppercase', color: 'var(--gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-                <span style={{ width: 36, height: 1, background: 'var(--gold)', flexShrink: 0, display: 'block' }} />
-                Pre-Launch Waitlist
-              </div>
-
-              <h1 style={{
-                fontFamily: 'var(--font-playfair)',
-                fontSize: 'clamp(42px, 5vw, 68px)',
-                fontWeight: 900, lineHeight: 1.05, marginBottom: 24,
-              }}>
-                Be first in.<br />
-                <em style={{ color: 'var(--gold)', fontStyle: 'italic' }}>Claim your name</em><br />
-                <span style={{ color: 'rgba(245,238,216,0.28)' }}>before they do.</span>
-              </h1>
-
-              <p style={{ fontSize: 17, fontWeight: 300, lineHeight: 1.75, color: 'var(--cream-dim)', marginBottom: 40, maxWidth: 460 }}>
-                Cheese launches soon. The first 5,000 people on this list get Gold benefits free for 90 days — and the username they reserve stays theirs, locked, the moment we go live.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 48 }}>
-                {[
-                  { icon: 'bolt',  text: 'First 5,000 get Gold benefits free for 90 days' },
-                  { icon: 'lock',  text: 'Reserved username locked exclusively to you' },
-                  { icon: 'chart', text: '+0.5% extra yield stacked on top of standard rate' },
-                ].map((item) => (
-                  <div key={item.text} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                    <div style={{
-                      width: 32, height: 32, border: '1px solid rgba(201,168,76,0.25)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, color: 'var(--gold)', background: 'rgba(201,168,76,0.05)',
-                    }}>
-                      {item.icon === 'bolt' && (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
-                        </svg>
-                      )}
-                      {item.icon === 'lock' && (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                        </svg>
-                      )}
-                      {item.icon === 'chart' && (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
-                        </svg>
-                      )}
-                    </div>
-                    <span style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(245,238,216,0.65)', fontWeight: 300, paddingTop: 6 }}>
-                      {item.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <ReservationCard />
-            </div>
-
-            {/* ── Right: form ── */}
-            <div>
-              <div style={{
-                background: 'var(--charcoal-2)',
-                border: '1px solid rgba(201,168,76,0.15)',
-                padding: '48px 40px',
-                position: 'relative',
-              }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--gold), var(--gold-light))' }} />
-
-                <div style={{ marginBottom: 36 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 20h20L12 3 2 20z"/>
-                      <circle cx="9.5" cy="15" r="1.25" strokeWidth={1.5}/>
-                      <circle cx="14.5" cy="13.5" r="1" strokeWidth={1.5}/>
-                      <circle cx="12" cy="18" r="0.875" strokeWidth={1.5}/>
-                    </svg>
-                    <span style={{ fontFamily: 'var(--font-bebas)', fontSize: 18, letterSpacing: 3, color: 'var(--gold)' }}>CHEESE</span>
-                  </div>
-                  <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: 24, fontWeight: 700, marginBottom: 6 }}>
-                    Reserve your spot
-                  </h2>
-                  <p style={{ fontSize: 14, color: 'rgba(245,238,216,0.45)', fontWeight: 300, lineHeight: 1.6 }}>
-                    169 spots remaining. The list closes when it&apos;s full.
-                  </p>
-                </div>
-
-                <WaitlistForm onSuccess={(u, e, pos) => setSuccessData({ username: u, email: e, position: pos })} />
-              </div>
-
-              {/* Trust strip */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 28, marginTop: 20, flexWrap: 'wrap' }}>
-                {[
-                  { icon: 'shield', text: 'No spam, ever' },
-                  { icon: 'lock',   text: 'Data encrypted' },
-                  { icon: 'check',  text: 'Cancel anytime' },
-                ].map((t) => (
-                  <div key={t.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'rgba(245,238,216,0.28)', letterSpacing: '0.5px' }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                      {t.icon === 'shield' && <path d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />}
-                      {t.icon === 'lock'   && <path d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />}
-                      {t.icon === 'check'  && <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />}
-                    </svg>
-                    {t.text}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer strip */}
+// ── Sub-components ───────────────────────────────────────────
+function Nav() {
+  return (
+    <nav style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
+      padding: '18px 6%',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      borderBottom: '1px solid rgba(255,255,255,0.04)',
+      background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(20px)',
+    }}>
+      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
         <div style={{
-          borderTop: '1px solid rgba(201,168,76,0.08)',
-          padding: '28px 6%',
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', flexWrap: 'wrap', gap: 12,
-        }}>
-          <span style={{ fontSize: 12, color: 'rgba(245,238,216,0.2)' }}>
-            © {new Date().getFullYear()} Cheese Wallet. All rights reserved.
-          </span>
-          <span style={{ fontSize: 11, color: 'rgba(245,238,216,0.15)', maxWidth: 500, lineHeight: 1.6 }}>
-            Cheese Wallet is not a licensed bank. USDC yield rates are variable and not guaranteed.
-          </span>
-        </div>
+          width: 32, height: 32, background: 'linear-gradient(135deg,#C9A84C,#A8822C)',
+          borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18,
+        }}>🧀</div>
+        <span style={{ fontSize: 15, fontWeight: 800, color: '#F5F5F5', letterSpacing: '-0.01em' }}>
+          CHEESE
+        </span>
+      </Link>
+      <Link href="/" style={{ fontSize: 13, color: '#666', textDecoration: 'none' }}>
+        ← Back to home
+      </Link>
+    </nav>
+  )
+}
 
-        <style>{`
-          @media (max-width: 860px) {
-            .waitlist-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
-          }
-          @keyframes blink   { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-          @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
-          @keyframes spin    { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-        `}</style>
-      </main>
-
-      {successData && (
-        <SuccessModal
-          username={successData.username}
-          email={successData.email}
-          position={successData.position}
-          onClose={() => { setSuccessData(null) }}
-        />
-      )}
+function BgGlow() {
+  return (
+    <>
+      <div style={{
+        position: 'fixed', top: '-20%', left: '50%', transform: 'translateX(-50%)',
+        width: 600, height: 600,
+        background: 'radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+      <div style={{
+        position: 'fixed', bottom: '-10%', right: '-10%',
+        width: 400, height: 400,
+        background: 'radial-gradient(circle, rgba(201,168,76,0.04) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
     </>
   )
+}
+
+// ── Styles ───────────────────────────────────────────────────
+const pageWrap: React.CSSProperties = {
+  minHeight: '100vh',
+  background: '#0A0A0A',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '100px 16px 48px',
+  position: 'relative',
+  fontFamily: "'Syne', 'Inter', sans-serif",
+}
+const cardWrap: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 480,
+  position: 'relative',
+  zIndex: 1,
+}
+const card: React.CSSProperties = {
+  background: '#141414',
+  border: '1px solid rgba(255,255,255,0.07)',
+  borderRadius: 24,
+  padding: '40px 36px',
+  boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
+}
+const h1: React.CSSProperties = {
+  fontSize: 38,
+  fontWeight: 800,
+  color: '#F5F5F5',
+  letterSpacing: '-0.03em',
+  lineHeight: 1.1,
+  marginBottom: 14,
+}
+const sub: React.CSSProperties = {
+  fontSize: 15,
+  color: '#666',
+  lineHeight: 1.6,
+  marginBottom: 0,
+}
+const spotsBar: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: 12,
+  color: '#C9A84C',
+  background: 'rgba(201,168,76,0.08)',
+  border: '1px solid rgba(201,168,76,0.15)',
+  borderRadius: 20,
+  padding: '5px 14px',
+  marginBottom: 20,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+const blinkDot: React.CSSProperties = {
+  width: 6, height: 6,
+  borderRadius: '50%',
+  background: '#C9A84C',
+  display: 'inline-block',
+  animation: 'pulse 2s infinite',
+}
+const label: React.CSSProperties = {
+  display: 'block',
+  fontSize: 13,
+  fontWeight: 600,
+  color: '#999',
+  marginBottom: 8,
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
+}
+const input: React.CSSProperties = {
+  width: '100%',
+  height: 52,
+  background: '#1A1A1A',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 14,
+  padding: '0 16px',
+  color: '#F5F5F5',
+  fontSize: 15,
+  outline: 'none',
+  fontFamily: "'Syne', sans-serif",
+  transition: 'border-color 0.2s',
+  boxSizing: 'border-box',
+}
+const atSign: React.CSSProperties = {
+  position: 'absolute',
+  left: 14,
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: '#666',
+  fontSize: 16,
+  pointerEvents: 'none',
+  zIndex: 1,
+}
+const hint: React.CSSProperties = {
+  fontSize: 11,
+  color: '#444',
+  marginTop: 6,
+  letterSpacing: '0.03em',
+}
+const errorBox: React.CSSProperties = {
+  background: 'rgba(248,113,113,0.08)',
+  border: '1px solid rgba(248,113,113,0.2)',
+  borderRadius: 12,
+  padding: '12px 16px',
+  fontSize: 13,
+  color: '#f87171',
+  lineHeight: 1.5,
+}
+const btnGold: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#C9A84C',
+  color: '#0A0904',
+  border: 'none',
+  borderRadius: 14,
+  fontFamily: "'Syne', sans-serif",
+  fontWeight: 700,
+  fontSize: 15,
+  cursor: 'pointer',
+  transition: 'opacity 0.2s',
+  padding: '0 24px',
+  height: 46,
+}
+const btnSecondary: React.CSSProperties = {
+  height: 46,
+  padding: '0 20px',
+  background: '#1A1A1A',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 14,
+  color: '#F5F5F5',
+  fontSize: 14,
+  fontFamily: "'Syne', sans-serif",
+  cursor: 'pointer',
+}
+const successIcon: React.CSSProperties = {
+  width: 80, height: 80,
+  background: 'rgba(201,168,76,0.1)',
+  border: '1px solid rgba(201,168,76,0.25)',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 36,
+  margin: '0 auto 24px',
+}
+const positionBadge: React.CSSProperties = {
+  display: 'inline-block',
+  marginTop: 16,
+  padding: '8px 20px',
+  background: 'rgba(201,168,76,0.1)',
+  border: '1px solid rgba(201,168,76,0.2)',
+  borderRadius: 20,
+  fontSize: 15,
+  fontWeight: 700,
+  color: '#C9A84C',
+  fontFamily: "'DM Mono', monospace",
+}
+const perksRow: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-around',
+  marginTop: 20,
+  padding: '0 8px',
+}
+const perkItem: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 6,
+}
+function badge(color: string, bg: string): React.CSSProperties {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    fontSize: 11, fontWeight: 600,
+    color, background: bg,
+    border: `1px solid ${color}40`,
+    borderRadius: 20, padding: '3px 10px',
+    fontFamily: "'Syne', sans-serif",
+    letterSpacing: '0.03em',
+  }
+}
+const spin: React.CSSProperties = {
+  display: 'inline-block',
+  width: 8, height: 8,
+  border: '1.5px solid currentColor',
+  borderTopColor: 'transparent',
+  borderRadius: '50%',
+  animation: 'spin 0.6s linear infinite',
 }
