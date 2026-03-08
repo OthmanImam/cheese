@@ -1,55 +1,62 @@
 // src/main.ts
-import { NestFactory }                    from '@nestjs/core'
-import { ValidationPipe }                 from '@nestjs/common'
-import { ConfigService }                  from '@nestjs/config'
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
-import * as cookieParser                  from 'cookie-parser'
-import helmet                             from 'helmet'
-import { AppModule }                      from './app.module'
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
-  })
+  });
 
-  const config = app.get(ConfigService)
-  const port   = config.get<number>('app.port', 3001)
-  const origin = config.get<string>('app.frontendUrl', 'http://localhost:3000')
-  const isDev  = config.get('app.nodeEnv') !== 'production'
+  const config = app.get(ConfigService);
+  const port = config.get<number>('app.port', 3001);
+  const origin = config.get<string>('app.frontendUrl', 'http://localhost:3000');
+  const isDev = config.get('app.nodeEnv') !== 'production';
 
   // ── Security ─────────────────────────────────────────────
   // Disable CSP in dev so Swagger UI loads its inline scripts
-  app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }))
-  app.use(cookieParser())
+  app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }));
+  app.use(cookieParser());
 
   // ── CORS ─────────────────────────────────────────────────
   const allowedOrigins = [
     origin,
     'https://cheesepay.xyz',
     'https://www.cheesepay.xyz',
-  ].filter(Boolean)
+  ].filter(Boolean);
 
   app.enableCors({
     origin: (requestOrigin, callback) => {
-      if (!requestOrigin) return callback(null, true)
-      if (allowedOrigins.includes(requestOrigin)) return callback(null, true)
-      callback(new Error(`Origin ${requestOrigin} not allowed`))
+      if (!requestOrigin) return callback(null, true);
+      if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
+      callback(new Error(`Origin ${requestOrigin} not allowed`));
     },
-    credentials:    true,
-    methods:        ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-App-Version', 'X-Platform'],
-  })
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-App-Version',
+      'X-Platform',
+    ],
+  });
 
   // ── Global validation ────────────────────────────────────
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist:            true,
-    forbidNonWhitelisted: true,
-    transform:            true,
-    transformOptions:     { enableImplicitConversion: true },
-  }))
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
 
   // ── API prefix ───────────────────────────────────────────
-  app.setGlobalPrefix('v1')
+  app.setGlobalPrefix('v1');
 
   // ── Swagger (dev only) ───────────────────────────────────
   if (isDev) {
@@ -57,67 +64,68 @@ async function bootstrap() {
       .setTitle('🧀 Cheese Wallet API')
       .setDescription(
         '## Cheese Wallet — Custodial USDC Wallet for Nigeria\n\n' +
-        'All endpoints are prefixed with **/v1**.\n\n' +
-        '### How to authenticate\n' +
-        '1. **POST /v1/auth/signup** — create an account\n' +
-        '2. **POST /v1/auth/verify-otp** — confirm email\n' +
-        '3. **POST /v1/auth/login** — copy the `accessToken` from the response\n' +
-        '4. Click **Authorize 🔓** above and paste: `Bearer <accessToken>`\n\n' +
-        'The refresh token is set as an httpOnly cookie automatically.',
+          'All endpoints are prefixed with **/v1**.\n\n' +
+          '### How to authenticate\n' +
+          '1. **POST /v1/auth/signup** — create an account\n' +
+          '2. **POST /v1/auth/verify-otp** — confirm email\n' +
+          '3. **POST /v1/auth/login** — copy the `accessToken` from the response\n' +
+          '4. Click **Authorize 🔓** above and paste: `Bearer <accessToken>`\n\n' +
+          'The refresh token is set as an httpOnly cookie automatically.',
       )
       .setVersion('1.0.0')
       .addBearerAuth(
         {
-          type:         'http',
-          scheme:       'bearer',
+          type: 'http',
+          scheme: 'bearer',
           bearerFormat: 'JWT',
-          name:         'Authorization',
-          description:  'Enter your access token (Swagger adds the "Bearer " prefix)',
-          in:           'header',
+          name: 'Authorization',
+          description:
+            'Enter your access token (Swagger adds the "Bearer " prefix)',
+          in: 'header',
         },
         'access-token',
       )
-      .addTag('Auth',          'Signup · Login · OTP · PIN · Password reset')
-      .addTag('Devices',       'Device key registration and management')
-      .addTag('Wallet',        'Stellar USDC balance and deposit address')
-      .addTag('Rates',         'USD → NGN exchange rate (cached 60 s)')
-      .addTag('Transactions',  'Transaction history with pagination')
-      .addTag('Send',          'Send USDC by username or Stellar address')
-      .addTag('Banks',         'Nigerian banks · Account resolution · NGN payout')
-      .addTag('Card',          'Virtual Mastercard — provision · freeze · CVV reveal')
+      .addTag('Auth', 'Signup · Login · OTP · PIN · Password reset')
+      .addTag('Devices', 'Device key registration and management')
+      .addTag('Wallet', 'Stellar USDC balance and deposit address')
+      .addTag('Rates', 'USD → NGN exchange rate (cached 60 s)')
+      .addTag('Transactions', 'Transaction history with pagination')
+      .addTag('Send', 'Send USDC by username or Stellar address')
+      .addTag('Banks', 'Nigerian banks · Account resolution · NGN payout')
+      .addTag('Card', 'Virtual Mastercard — provision · freeze · CVV reveal')
       .addTag('Notifications', 'In-app notification feed')
-      .addTag('Profile',       'Update display name · username · phone number')
-      .addTag('Earn',          '5 % APY USDC yield positions')
-      .addTag('Referral',      'Referral codes, share links and reward tracking')
-      .addTag('Waitlist',      'Pre-launch waitlist and username reservation')
-      .addTag('PayLink',       'Cash App-style payment request links')
-      .build()
+      .addTag('Profile', 'Update display name · username · phone number')
+      .addTag('Earn', '5 % APY USDC yield positions')
+      .addTag('Referral', 'Referral codes, share links and reward tracking')
+      .addTag('Waitlist', 'Pre-launch waitlist and username reservation')
+      .addTag('PayLink', 'Cash App-style payment request links')
+      .build();
 
-    const document = SwaggerModule.createDocument(app, swaggerConfig)
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
 
     SwaggerModule.setup('api/docs', app, document, {
       swaggerOptions: {
-        persistAuthorization: true,   // token survives page refresh
-        tagsSorter:           'alpha',
-        operationsSorter:     'alpha',
-        docExpansion:         'none', // start collapsed
-        filter:               true,   // enable search bar
-        showRequestDuration:  true,   // show ms latency on responses
+        persistAuthorization: true, // token survives page refresh
+        tagsSorter: 'alpha',
+        operationsSorter: 'alpha',
+        docExpansion: 'none', // start collapsed
+        filter: true, // enable search bar
+        showRequestDuration: true, // show ms latency on responses
       },
       customSiteTitle: '🧀 Cheese Wallet API Docs',
-    })
+    });
 
-    console.log(`   Swagger UI  : http://localhost:${port}/api/docs`)
+    console.log(`   Swagger UI  : http://localhost:${port}/api/docs`);
   }
 
   // ── Graceful shutdown ────────────────────────────────────
-  app.enableShutdownHooks()
+  app.enableShutdownHooks();
 
-  await app.listen(port)
-  console.log(`\n🧀 Cheese Wallet API  →  http://localhost:${port}/v1`)
-  console.log(`   Environment : ${config.get('app.nodeEnv')}`)
-  console.log(`   Stellar     : ${config.get('stellar.network')}`)
-  console.log(`   Frontend    : ${origin}\n`)
+  await app.listen(port);
+  console.log(`\n🧀 Cheese Wallet API  →  http://localhost:${port}/v1`);
+  console.log(`   Environment : ${config.get('app.nodeEnv')}`);
+  console.log(`   Stellar     : ${config.get('stellar.network')}`);
+  console.log(`   Frontend    : ${origin}\n`);
 }
 
-bootstrap()
+bootstrap();

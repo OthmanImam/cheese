@@ -1,42 +1,46 @@
 // src/devices/entities/device.entity.ts
 import {
-  Column, CreateDateColumn, Entity,
-  ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn,
-} from 'typeorm'
-import { User } from '../../auth/entities/user.entity'
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from '../../auth/entities/user.entity';
 
 @Entity('devices')
 export class Device {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id: string;
 
   @Column({ name: 'device_id', unique: true })
-  deviceId: string
+  deviceId: string;
 
   @Column({ name: 'public_key', type: 'text' })
-  publicKey: string
+  publicKey: string;
 
   @Column({ name: 'device_name', nullable: true })
-  deviceName: string | null
+  deviceName: string | null;
 
   @Column({ name: 'last_seen', nullable: true })
-  lastSeen: Date | null
+  lastSeen: Date | null;
 
   @Column({ nullable: true })
-  location: string | null
+  location: string | null;
 
   @Column({ name: 'is_active', default: true })
-  isActive: boolean
+  isActive: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date
+  createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date
+  updatedAt: Date;
 
   @ManyToOne(() => User, (u) => u.devices, { onDelete: 'CASCADE' })
-  user: User
+  user: User;
 
   @Column({ name: 'user_id' })
-  userId: string
+  userId: string;
 }

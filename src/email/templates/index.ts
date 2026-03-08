@@ -1,18 +1,24 @@
 // src/email/templates/index.ts
 import {
-  BRAND, baseLayout, goldDivider, primaryButton,
-  otpBox, amountDisplay, detailRow, infoBox,
-} from './base'
+  BRAND,
+  baseLayout,
+  goldDivider,
+  primaryButton,
+  otpBox,
+  amountDisplay,
+  detailRow,
+  infoBox,
+} from './base';
 
 // ─────────────────────────────────────────────────────────
 // 1. WAITLIST RESERVATION CONFIRMATION
 // ─────────────────────────────────────────────────────────
 export function waitlistConfirmation(params: {
-  username: string
-  email:    string
-  position?: number
+  username: string;
+  email: string;
+  position?: number;
 }): { subject: string; html: string } {
-  const subject = `@${params.username} is yours — Welcome to Cheese Wallet 🧀`
+  const subject = `@${params.username} is yours — Welcome to Cheese Wallet 🧀`;
   const html = baseLayout({
     preheader: `Your username @${params.username} has been reserved. You're among the first.`,
     body: `
@@ -52,10 +58,14 @@ export function waitlistConfirmation(params: {
                          font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0;">
                 @${params.username}
               </p>
-              ${params.position ? `
+              ${
+                params.position
+                  ? `
               <p style="font-size:13px;color:${BRAND.textMuted};margin-top:12px;font-family:'Inter',sans-serif;">
                 🏆 You're <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong> on the waitlist
-              </p>` : ''}
+              </p>`
+                  : ''
+              }
             </td>
           </tr>
         </table>
@@ -68,10 +78,24 @@ export function waitlistConfirmation(params: {
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
           ${[
             ['💵', 'Hold & earn on USDC', 'Up to 5% APY — no lock-ups'],
-            ['⚡', 'Instant NGN withdrawals', 'Send to any Nigerian bank in seconds'],
-            ['💳', 'Virtual dollar card', 'Pay globally with your USDC balance'],
-            ['🚀', 'Send money by username', 'Just @username — no account numbers'],
-          ].map(([icon, title, desc]) => `
+            [
+              '⚡',
+              'Instant NGN withdrawals',
+              'Send to any Nigerian bank in seconds',
+            ],
+            [
+              '💳',
+              'Virtual dollar card',
+              'Pay globally with your USDC balance',
+            ],
+            [
+              '🚀',
+              'Send money by username',
+              'Just @username — no account numbers',
+            ],
+          ]
+            .map(
+              ([icon, title, desc]) => `
           <tr>
             <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -86,26 +110,29 @@ export function waitlistConfirmation(params: {
                 </tr>
               </table>
             </td>
-          </tr>`).join('')}
+          </tr>`,
+            )
+            .join('')}
         </table>
 
         ${infoBox(`We'll email you at <strong style="color:${BRAND.textLight};">${params.email}</strong> the moment we go live. Early reservers get priority access and exclusive launch bonuses.`)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 2. APP LAUNCH — goes to all waitlist members
 // ─────────────────────────────────────────────────────────
-export function appLaunch(params: {
-  username: string
-  appUrl:   string
-}): { subject: string; html: string } {
-  const subject = `🚀 Cheese Wallet is LIVE — @${params.username}, your turn.`
+export function appLaunch(params: { username: string; appUrl: string }): {
+  subject: string;
+  html: string;
+} {
+  const subject = `🚀 Cheese Wallet is LIVE — @${params.username}, your turn.`;
   const html = baseLayout({
-    preheader: 'The wait is over. Your wallet is ready. Claim your username now.',
+    preheader:
+      'The wait is over. Your wallet is ready. Claim your username now.',
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
@@ -170,19 +197,19 @@ export function appLaunch(params: {
         ${infoBox('As an early reserver, your first 3 months of earn are at <strong style="color:' + BRAND.gold + ';">boosted 6% APY</strong>. This offer expires 30 days after launch.', 'success')}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 3. SIGNUP OTP
 // ─────────────────────────────────────────────────────────
 export function signupOtp(params: {
-  fullName:  string
-  otp:       string
-  expiresIn: string
+  fullName: string;
+  otp: string;
+  expiresIn: string;
 }): { subject: string; html: string } {
-  const subject = `${params.otp} — your Cheese Wallet verification code`
+  const subject = `${params.otp} — your Cheese Wallet verification code`;
   const html = baseLayout({
     preheader: `Your verification code is ${params.otp}. Valid for ${params.expiresIn}.`,
     body: `
@@ -215,19 +242,19 @@ export function signupOtp(params: {
         </div>
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 4. SUCCESSFUL SIGNUP
 // ─────────────────────────────────────────────────────────
 export function signupSuccess(params: {
-  fullName:    string
-  username:    string
-  appUrl:      string
+  fullName: string;
+  username: string;
+  appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Welcome to Cheese Wallet, @${params.username} 🧀`
+  const subject = `Welcome to Cheese Wallet, @${params.username} 🧀`;
   const html = baseLayout({
     preheader: 'Your account is live. Fund your wallet and start earning.',
     body: `
@@ -269,9 +296,11 @@ export function signupSuccess(params: {
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           ${[
             ['1', 'Fund your wallet', 'Deposit USDC via Stellar network'],
-            ['2', 'Start earning',    'Toggle Earn on to get 5% APY instantly'],
+            ['2', 'Start earning', 'Toggle Earn on to get 5% APY instantly'],
             ['3', 'Withdraw anytime', 'Send NGN directly to your bank account'],
-          ].map(([num, title, desc]) => `
+          ]
+            .map(
+              ([num, title, desc]) => `
           <tr>
             <td style="padding:12px 0;border-bottom:1px solid ${BRAND.border};">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -294,26 +323,28 @@ export function signupSuccess(params: {
                 </tr>
               </table>
             </td>
-          </tr>`).join('')}
+          </tr>`,
+            )
+            .join('')}
         </table>
 
         ${primaryButton('Open My Wallet →', params.appUrl)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 5. PASSWORD RESET OTP
 // ─────────────────────────────────────────────────────────
 export function passwordResetOtp(params: {
-  fullName:  string
-  otp:       string
-  expiresIn: string
-  ipAddress?: string
+  fullName: string;
+  otp: string;
+  expiresIn: string;
+  ipAddress?: string;
 }): { subject: string; html: string } {
-  const subject = `Reset your Cheese Wallet password`
+  const subject = `Reset your Cheese Wallet password`;
   const html = baseLayout({
     preheader: `Your password reset code is ${params.otp}. Valid for ${params.expiresIn}.`,
     body: `
@@ -345,24 +376,24 @@ export function passwordResetOtp(params: {
         <div style="padding:28px 0 0;">
           ${infoBox(
             `<strong>Wasn't you?</strong> If you didn't request a password reset, secure your account immediately by logging in and changing your password.${params.ipAddress ? ` This request came from IP: <strong style="color:${BRAND.textLight};">${params.ipAddress}</strong>` : ''}`,
-            'warning'
+            'warning',
           )}
         </div>
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 6. SUCCESSFUL PASSWORD CHANGE
 // ─────────────────────────────────────────────────────────
 export function passwordChanged(params: {
-  fullName:   string
-  changedAt:  string
-  deviceName?: string
+  fullName: string;
+  changedAt: string;
+  deviceName?: string;
 }): { subject: string; html: string } {
-  const subject = `Your Cheese Wallet password was changed`
+  const subject = `Your Cheese Wallet password was changed`;
   const html = baseLayout({
     preheader: `Your password was successfully updated on ${params.changedAt}.`,
     body: `
@@ -390,22 +421,22 @@ export function passwordChanged(params: {
         ${infoBox('If you did not make this change, your account may be compromised. Please contact support immediately at <a href="mailto:support@cheesewallet.app" style="color:' + BRAND.gold + ';">support@cheesewallet.app</a>', 'warning')}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 7. MONEY RECEIVED / ACCOUNT FUNDED
 // ─────────────────────────────────────────────────────────
 export function moneyReceived(params: {
-  fullName:   string
-  amountUsdc: string
-  amountNgn?: string
-  txHash?:    string
-  network?:   string
-  appUrl:     string
+  fullName: string;
+  amountUsdc: string;
+  amountNgn?: string;
+  txHash?: string;
+  network?: string;
+  appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `💰 $${params.amountUsdc} USDC received — start spending`
+  const subject = `💰 $${params.amountUsdc} USDC received — start spending`;
   const html = baseLayout({
     preheader: `$${params.amountUsdc} USDC has been credited to your Cheese Wallet.`,
     body: `
@@ -426,14 +457,18 @@ export function moneyReceived(params: {
 
         <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc, params.amountNgn)}</div>
 
-        ${params.txHash ? `
+        ${
+          params.txHash
+            ? `
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tbody>
             ${params.network ? detailRow('Network', params.network) : ''}
             ${detailRow('Transaction Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`)}
             ${detailRow('Status', '✅ Confirmed', true)}
           </tbody>
-        </table>` : ''}
+        </table>`
+            : ''
+        }
 
         <!-- Suggestions -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
@@ -443,9 +478,15 @@ export function moneyReceived(params: {
                          font-family:'Inter',sans-serif;margin:0 0 12px;">Put your money to work</p>
               ${[
                 ['📈', 'Earn 5% APY', 'Toggle Earn to grow your balance daily'],
-                ['💳', 'Spend with card', 'Use your virtual Mastercard anywhere'],
+                [
+                  '💳',
+                  'Spend with card',
+                  'Use your virtual Mastercard anywhere',
+                ],
                 ['🏦', 'Withdraw to bank', 'Convert USDC to NGN instantly'],
-              ].map(([icon, title, desc]) => `
+              ]
+                .map(
+                  ([icon, title, desc]) => `
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
                 <tr>
                   <td width="36" style="font-size:18px;vertical-align:middle;">${icon}</td>
@@ -454,7 +495,9 @@ export function moneyReceived(params: {
                     <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">${desc}</p>
                   </td>
                 </tr>
-              </table>`).join('')}
+              </table>`,
+                )
+                .join('')}
             </td>
           </tr>
         </table>
@@ -462,29 +505,29 @@ export function moneyReceived(params: {
         ${primaryButton('Start Spending →', params.appUrl)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 8. MONEY SENT
 // ─────────────────────────────────────────────────────────
 export function moneySent(params: {
-  fullName:          string
-  amountUsdc:        string
-  amountNgn?:        string
-  recipientName?:    string
-  recipientUsername?: string
-  recipientAddress?: string
-  txHash?:           string
-  reference:         string
-  fee:               string
-  appUrl:            string
+  fullName: string;
+  amountUsdc: string;
+  amountNgn?: string;
+  recipientName?: string;
+  recipientUsername?: string;
+  recipientAddress?: string;
+  txHash?: string;
+  reference: string;
+  fee: string;
+  appUrl: string;
 }): { subject: string; html: string } {
   const recipient = params.recipientUsername
     ? `@${params.recipientUsername}`
-    : params.recipientName || 'recipient'
-  const subject = `You sent $${params.amountUsdc} USDC to ${recipient}`
+    : params.recipientName || 'recipient';
+  const subject = `You sent $${params.amountUsdc} USDC to ${recipient}`;
   const html = baseLayout({
     preheader: `$${params.amountUsdc} USDC sent. Reference: ${params.reference}.`,
     body: `
@@ -519,20 +562,20 @@ export function moneySent(params: {
         ${primaryButton('View Transaction →', `${params.appUrl}/history`)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 9. KYC APPROVED
 // ─────────────────────────────────────────────────────────
 export function kycApproved(params: {
-  fullName:   string
-  tier:       string
-  appUrl:     string
-  benefits:   string[]
+  fullName: string;
+  tier: string;
+  appUrl: string;
+  benefits: string[];
 }): { subject: string; html: string } {
-  const subject = `🎉 Identity verified — your ${params.tier} account is unlocked`
+  const subject = `🎉 Identity verified — your ${params.tier} account is unlocked`;
   const html = baseLayout({
     preheader: `KYC approved! Your ${params.tier} tier is now fully active.`,
     body: `
@@ -563,40 +606,44 @@ export function kycApproved(params: {
                        text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 16px;">
               Your ${params.tier} Benefits
             </p>
-            ${params.benefits.map((b) => `
+            ${params.benefits
+              .map(
+                (b) => `
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
               <tr>
                 <td width="24" style="color:${BRAND.successGreen};font-size:16px;vertical-align:top;">✓</td>
                 <td style="font-size:14px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${b}</td>
               </tr>
-            </table>`).join('')}
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
         ${primaryButton('Explore Your Account →', params.appUrl)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 10. ACCOUNT TIER UPGRADE
 // ─────────────────────────────────────────────────────────
 export function tierUpgrade(params: {
-  fullName:  string
-  fromTier:  string
-  toTier:    string
-  appUrl:    string
-  benefits:  string[]
+  fullName: string;
+  fromTier: string;
+  toTier: string;
+  appUrl: string;
+  benefits: string[];
 }): { subject: string; html: string } {
   const tierColors: Record<string, string> = {
     silver: '#9CA3AF',
-    gold:   BRAND.gold,
-    black:  '#F5F5F5',
-  }
-  const color = tierColors[params.toTier.toLowerCase()] || BRAND.gold
-  const subject = `⬆️ You've been upgraded to ${params.toTier} tier`
+    gold: BRAND.gold,
+    black: '#F5F5F5',
+  };
+  const color = tierColors[params.toTier.toLowerCase()] || BRAND.gold;
+  const subject = `⬆️ You've been upgraded to ${params.toTier} tier`;
   const html = baseLayout({
     preheader: `Congratulations! You've unlocked ${params.toTier} — higher limits, more power.`,
     body: `
@@ -650,34 +697,38 @@ export function tierUpgrade(params: {
                        text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 16px;">
               ${params.toTier} Unlocks
             </p>
-            ${params.benefits.map((b) => `
+            ${params.benefits
+              .map(
+                (b) => `
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
               <tr>
                 <td width="24" style="color:${color};font-size:16px;vertical-align:top;">✦</td>
                 <td style="font-size:14px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${b}</td>
               </tr>
-            </table>`).join('')}
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
         ${primaryButton(`Explore ${params.toTier} Features →`, params.appUrl)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }
 
 // ─────────────────────────────────────────────────────────
 // 11. WAITLIST REMINDER — claim your username
 // ─────────────────────────────────────────────────────────
 export function waitlistReminder(params: {
-  username:   string
-  email:      string
-  signupUrl:  string
-  daysOnList: number
-  position?:  number
+  username: string;
+  email: string;
+  signupUrl: string;
+  daysOnList: number;
+  position?: number;
 }): { subject: string; html: string } {
-  const subject = `@${params.username} is still yours — don't let it expire`
+  const subject = `@${params.username} is still yours — don't let it expire`;
   const html = baseLayout({
     preheader: `Your username @${params.username} is reserved. Complete your signup before it's released.`,
     body: `
@@ -718,9 +769,13 @@ export function waitlistReminder(params: {
                                font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0 0 8px;">
                       @${params.username}
                     </p>
-                    ${params.position ? `<p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">
+                    ${
+                      params.position
+                        ? `<p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">
                       🏆 Waitlist position <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong>
-                    </p>` : ''}
+                    </p>`
+                        : ''
+                    }
                   </td>
                   <td align="right" style="vertical-align:top;">
                     <div style="background:#F59E0B20;border:1px solid #F59E0B44;border-radius:8px;
@@ -752,19 +807,23 @@ export function waitlistReminder(params: {
               ['💰', '5% APY on your USDC — earn while you sleep'],
               ['💳', 'Virtual Mastercard for global spending'],
               ['🎁', 'Early-reserver bonuses expire soon'],
-            ].map(([icon, text]) => `
+            ]
+              .map(
+                ([icon, text]) => `
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
               <tr>
                 <td width="28" style="font-size:16px;vertical-align:middle;">${icon}</td>
                 <td style="font-size:13px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${text}</td>
               </tr>
-            </table>`).join('')}
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
         ${infoBox(`Signup only takes 2 minutes. Your email <strong style="color:${BRAND.textLight};">${params.email}</strong> is pre-verified — we just need a few details to get you in.`)}
       </div>
     `,
-  })
-  return { subject, html }
+  });
+  return { subject, html };
 }

@@ -1,38 +1,41 @@
 // src/otp/entities/otp.entity.ts
 import {
-  Column, CreateDateColumn, Entity, PrimaryGeneratedColumn,
-} from 'typeorm'
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 export enum OtpType {
-  EMAIL_VERIFY  = 'email_verify',
-  PHONE_VERIFY  = 'phone_verify',
+  EMAIL_VERIFY = 'email_verify',
+  PHONE_VERIFY = 'phone_verify',
   PASSWORD_RESET = 'password_reset',
-  LOGIN_2FA     = 'login_2fa',
+  LOGIN_2FA = 'login_2fa',
 }
 
 @Entity('otps')
 export class Otp {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id: string;
 
   @Column()
-  email: string
+  email: string;
 
   @Column({ name: 'code_hash' })
-  codeHash: string
+  codeHash: string;
 
   @Column({ type: 'enum', enum: OtpType })
-  type: OtpType
+  type: OtpType;
 
   @Column({ name: 'expires_at' })
-  expiresAt: Date
+  expiresAt: Date;
 
   @Column({ name: 'is_used', default: false })
-  isUsed: boolean
+  isUsed: boolean;
 
   @Column({ name: 'attempts', default: 0 })
-  attempts: number
+  attempts: number;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date
+  createdAt: Date;
 }

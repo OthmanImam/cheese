@@ -1,11 +1,13 @@
 // src/profile/profile.service.ts
 import {
-  ConflictException, Injectable, NotFoundException,
-} from '@nestjs/common'
-import { InjectRepository } from '@nestjs/typeorm'
-import { Repository }       from 'typeorm'
-import { User }             from '../auth/entities/user.entity'
-import { UpdateProfileDto } from './dto'
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../auth/entities/user.entity';
+import { UpdateProfileDto } from './dto';
 
 @Injectable()
 export class ProfileService {
@@ -13,19 +15,28 @@ export class ProfileService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
-  async update(userId: string, dto: UpdateProfileDto): Promise<Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'>> {
+  async update(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'>> {
     if (dto.username) {
-      const existing = await this.userRepo.findOne({ where: { username: dto.username } })
-      if (existing && existing.id !== userId) throw new ConflictException('Username already taken')
+      const existing = await this.userRepo.findOne({
+        where: { username: dto.username },
+      });
+      if (existing && existing.id !== userId)
+        throw new ConflictException('Username already taken');
     }
     if (dto.phone) {
-      const existing = await this.userRepo.findOne({ where: { phone: dto.phone } })
-      if (existing && existing.id !== userId) throw new ConflictException('Phone already registered')
+      const existing = await this.userRepo.findOne({
+        where: { phone: dto.phone },
+      });
+      if (existing && existing.id !== userId)
+        throw new ConflictException('Phone already registered');
     }
 
-    await this.userRepo.update({ id: userId }, dto)
-    const updated = await this.userRepo.findOne({ where: { id: userId } })
-    const { passwordHash, pinHash, stellarSecretEnc, ...safe } = updated as any
-    return safe
+    await this.userRepo.update({ id: userId }, dto);
+    const updated = await this.userRepo.findOne({ where: { id: userId } });
+    const { passwordHash, pinHash, stellarSecretEnc, ...safe } = updated as any;
+    return safe;
   }
 }

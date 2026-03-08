@@ -1,28 +1,28 @@
 // src/email/templates/base.ts
 
 export const BRAND = {
-  gold:       '#C9A84C',
-  goldLight:  '#E2C06A',
-  goldDark:   '#A8822C',
-  black:      '#0A0A0A',
-  darkBg:     '#111111',
-  cardBg:     '#1A1A1A',
-  surface:    '#222222',
-  border:     '#2E2E2E',
-  textPrimary:'#F5F5F5',
-  textMuted:  '#999999',
-  textLight:  '#CCCCCC',
-  white:      '#FFFFFF',
+  gold: '#C9A84C',
+  goldLight: '#E2C06A',
+  goldDark: '#A8822C',
+  black: '#0A0A0A',
+  darkBg: '#111111',
+  cardBg: '#1A1A1A',
+  surface: '#222222',
+  border: '#2E2E2E',
+  textPrimary: '#F5F5F5',
+  textMuted: '#999999',
+  textLight: '#CCCCCC',
+  white: '#FFFFFF',
   successGreen: '#22C55E',
-  errorRed:   '#EF4444',
-}
+  errorRed: '#EF4444',
+};
 
 export function baseLayout(params: {
-  preheader:  string
-  body:       string
-  year?:      number
+  preheader: string;
+  body: string;
+  year?: number;
 }): string {
-  const year = params.year ?? new Date().getFullYear()
+  const year = params.year ?? new Date().getFullYear();
   return `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -100,7 +100,7 @@ export function baseLayout(params: {
     </td></tr>
   </table>
 </body>
-</html>`
+</html>`;
 }
 
 // ── Reusable components ───────────────────────────────────
@@ -108,7 +108,7 @@ export function baseLayout(params: {
 export function goldDivider(): string {
   return `<tr><td style="padding:0 40px;">
     <div style="height:1px;background:linear-gradient(90deg,transparent,${BRAND.gold}55,transparent);"></div>
-  </td></tr>`
+  </td></tr>`;
 }
 
 export function primaryButton(text: string, href: string): string {
@@ -123,7 +123,7 @@ export function primaryButton(text: string, href: string): string {
         </a>
       </td>
     </tr>
-  </table>`
+  </table>`;
 }
 
 export function otpBox(code: string): string {
@@ -139,7 +139,7 @@ export function otpBox(code: string): string {
         </span>
       </td>
     </tr>
-  </table>`
+  </table>`;
 }
 
 export function amountDisplay(usdc: string, ngn?: string): string {
@@ -154,10 +154,14 @@ export function amountDisplay(usdc: string, ngn?: string): string {
         ${ngn ? `<p style="font-size:14px;color:${BRAND.textMuted};margin-top:6px;font-family:'Inter',sans-serif;">≈ ₦${ngn}</p>` : ''}
       </td>
     </tr>
-  </table>`
+  </table>`;
 }
 
-export function detailRow(label: string, value: string, highlight = false): string {
+export function detailRow(
+  label: string,
+  value: string,
+  highlight = false,
+): string {
   return `<tr>
     <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -169,16 +173,23 @@ export function detailRow(label: string, value: string, highlight = false): stri
         </tr>
       </table>
     </td>
-  </tr>`
+  </tr>`;
 }
 
-export function infoBox(text: string, type: 'info' | 'warning' | 'success' = 'info'): string {
+export function infoBox(
+  text: string,
+  type: 'info' | 'warning' | 'success' = 'info',
+): string {
   const colors = {
-    info:    { bg: `${BRAND.gold}15`,   border: `${BRAND.gold}40`,   icon: '💡' },
-    warning: { bg: '#F59E0B15',         border: '#F59E0B40',         icon: '⚠️' },
-    success: { bg: `${BRAND.successGreen}15`, border: `${BRAND.successGreen}40`, icon: '✅' },
-  }
-  const c = colors[type]
+    info: { bg: `${BRAND.gold}15`, border: `${BRAND.gold}40`, icon: '💡' },
+    warning: { bg: '#F59E0B15', border: '#F59E0B40', icon: '⚠️' },
+    success: {
+      bg: `${BRAND.successGreen}15`,
+      border: `${BRAND.successGreen}40`,
+      icon: '✅',
+    },
+  };
+  const c = colors[type];
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
     <tr>
       <td style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:14px 16px;">
@@ -187,5 +198,5 @@ export function infoBox(text: string, type: 'info' | 'warning' | 'success' = 'in
         </p>
       </td>
     </tr>
-  </table>`
+  </table>`;
 }

@@ -1,110 +1,137 @@
 // src/app.module.ts — ALL PHASES (1-7)
-import { Module }           from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { TypeOrmModule }    from '@nestjs/typeorm'
-import { ThrottlerModule, ThrottlerGuard }  from '@nestjs/throttler'
-import { ScheduleModule }   from '@nestjs/schedule'
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core'
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import {
-  appConfig, dbConfig, jwtConfig,
-  otpConfig, ratesConfig, redisConfig, stellarConfig,
-} from './config/app.config'
-import { AllExceptionsFilter }  from './common/filters/http-exception.filter'
-import { ResponseInterceptor }  from './common/interceptors/response.interceptor'
-import { JwtAccessGuard }       from './auth/guards/jwt.guard'
+  appConfig,
+  dbConfig,
+  jwtConfig,
+  otpConfig,
+  ratesConfig,
+  redisConfig,
+  stellarConfig,
+} from './config/app.config';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { JwtAccessGuard } from './auth/guards/jwt.guard';
 
-import { AuthModule }         from './auth/auth.module'
-import { DevicesModule }      from './devices/devices.module'
-import { WalletModule }       from './wallet/wallet.module'
-import { RatesModule }        from './rates/rates.module'
-import { TransactionsModule } from './transactions/transactions.module'
-import { SendModule }         from './send/send.module'
-import { OtpModule }          from './otp/otp.module'
-import { StellarModule }      from './stellar/stellar.module'
-import { BanksModule }        from './banks/banks.module'
-import { CardsModule }        from './cards/cards.module'
-import { NotificationsModule } from './notifications/notifications.module'
-import { ProfileModule }      from './profile/profile.module'
-import { EarnModule }         from './earn/earn.module'
-import { ReferralModule }     from './referral/referral.module'
-import { EmailModule }        from './email/email.module'
-import { WaitlistModule }     from './waitlist/waitlist.module'
-import { PayLinkModule }      from './paylink/paylink.module'
+import { AuthModule } from './auth/auth.module';
+import { DevicesModule } from './devices/devices.module';
+import { WalletModule } from './wallet/wallet.module';
+import { RatesModule } from './rates/rates.module';
+import { TransactionsModule } from './transactions/transactions.module';
+import { SendModule } from './send/send.module';
+import { OtpModule } from './otp/otp.module';
+import { StellarModule } from './stellar/stellar.module';
+import { BanksModule } from './banks/banks.module';
+import { CardsModule } from './cards/cards.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ProfileModule } from './profile/profile.module';
+import { EarnModule } from './earn/earn.module';
+import { ReferralModule } from './referral/referral.module';
+import { EmailModule } from './email/email.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
+import { PayLinkModule } from './paylink/paylink.module';
 
-import { User }          from './auth/entities/user.entity'
-import { RefreshToken }  from './auth/entities/refresh-token.entity'
-import { Device }        from './devices/entities/device.entity'
-import { Otp }           from './otp/entities/otp.entity'
-import { Transaction }   from './transactions/entities/transaction.entity'
-import { ExchangeRate }  from './rates/entities/exchange-rate.entity'
-import { BankTransfer }  from './banks/entities/bank-transfer.entity'
-import { VirtualCard }   from './cards/entities/virtual-card.entity'
-import { Notification }  from './notifications/entities/notification.entity'
-import { EarnPosition }  from './earn/entities/earn-position.entity'
-import { Referral }      from './referral/entities/referral.entity'
-import { WaitlistEntry }   from './waitlist/entities/waitlist-entry.entity'
-import { PaymentRequest } from './paylink/entities/payment-request.entity'
+import { User } from './auth/entities/user.entity';
+import { RefreshToken } from './auth/entities/refresh-token.entity';
+import { Device } from './devices/entities/device.entity';
+import { Otp } from './otp/entities/otp.entity';
+import { Transaction } from './transactions/entities/transaction.entity';
+import { ExchangeRate } from './rates/entities/exchange-rate.entity';
+import { BankTransfer } from './banks/entities/bank-transfer.entity';
+import { VirtualCard } from './cards/entities/virtual-card.entity';
+import { Notification } from './notifications/entities/notification.entity';
+import { EarnPosition } from './earn/entities/earn-position.entity';
+import { Referral } from './referral/entities/referral.entity';
+import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
+import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load:     [appConfig, dbConfig, jwtConfig, redisConfig, stellarConfig, otpConfig, ratesConfig],
+      load: [
+        appConfig,
+        dbConfig,
+        jwtConfig,
+        redisConfig,
+        stellarConfig,
+        otpConfig,
+        ratesConfig,
+      ],
       // email config is registered inside emailConfig in app.config.ts
       envFilePath: ['.env'],
     }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => [{
-        ttl:   config.get('THROTTLE_TTL',   60) * 1000,
-        limit: config.get('THROTTLE_LIMIT', 100),
-      }],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get('THROTTLE_TTL', 60) * 1000,
+          limit: config.get('THROTTLE_LIMIT', 100),
+        },
+      ],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type:     'postgres',
-        host:     config.get('db.host'),
-        port:     config.get('db.port'),
+        type: 'postgres',
+        host: config.get('db.host'),
+        port: config.get('db.port'),
         username: config.get('db.user'),
         password: config.get('db.password'),
         database: config.get('db.name'),
         entities: [
-          User, RefreshToken, Device, Otp,
-          Transaction, ExchangeRate,
-          BankTransfer, VirtualCard,
-          Notification, EarnPosition, Referral, WaitlistEntry, PaymentRequest,
+          User,
+          RefreshToken,
+          Device,
+          Otp,
+          Transaction,
+          ExchangeRate,
+          BankTransfer,
+          VirtualCard,
+          Notification,
+          EarnPosition,
+          Referral,
+          WaitlistEntry,
+          PaymentRequest,
         ],
         synchronize: config.get('app.nodeEnv') !== 'production',
-        logging:     config.get('app.nodeEnv') === 'development',
-        ssl: config.get('app.nodeEnv') === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
+        logging: config.get('app.nodeEnv') === 'development',
+        ssl:
+          config.get('app.nodeEnv') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
     // Phase 1
-    AuthModule, DevicesModule, OtpModule, StellarModule,
+    AuthModule,
+    // DevicesModule, OtpModule, StellarModule,
     // Phase 2
-    WalletModule, RatesModule, TransactionsModule,
+    // WalletModule, RatesModule, TransactionsModule,
     // Phase 3
-    SendModule,
+    // SendModule,
     // Phase 4
-    BanksModule,
+    // BanksModule,
     // Phase 5
-    CardsModule,
+    // CardsModule,
     // Phase 6
-    NotificationsModule, ProfileModule,
+    // NotificationsModule, ProfileModule,
     // Phase 7
-    EarnModule, ReferralModule,
+    // EarnModule, ReferralModule,
     // Email + Waitlist + PayLink
-    WaitlistModule, EmailModule, PayLinkModule,
+    WaitlistModule,
+    // EmailModule, PayLinkModule,
   ],
   providers: [
-    { provide: APP_GUARD,       useClass: JwtAccessGuard },
-    { provide: APP_GUARD,       useClass: ThrottlerGuard },
-    { provide: APP_FILTER,      useClass: AllExceptionsFilter },
+    { provide: APP_GUARD, useClass: JwtAccessGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
   ],
 })
