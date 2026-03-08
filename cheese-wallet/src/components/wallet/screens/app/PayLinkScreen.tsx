@@ -46,7 +46,7 @@ function PaymentRequestForm({ onCreated }: { onCreated: (r: CreatePayLinkRespons
   const [error, setError]     = useState<string | null>(null)
   const { mutateAsync, isPending } = useCreatePayLink()
   const { data: rate }        = useExchangeRate()
-  const ngnRate               = parseFloat(rate?.effectiveRate ?? '0')
+  const ngnRate               = parseFloat(String(rate?.effectiveRate ?? 0))
 
   const numericAmount = parseFloat(amount || '0')
   const hasAmount     = numericAmount >= 0.01
@@ -254,7 +254,7 @@ function PaymentLinkCard({
   const { showToast }  = useUiStore()
   const user           = useAuthStore(s => s.user)
   const { data: rate } = useExchangeRate()
-  const ngnRate        = parseFloat(rate?.effectiveRate ?? '0')
+  const ngnRate        = parseFloat(String(rate?.effectiveRate ?? 0))
   const amount         = parseFloat(result.amountUsdc)
   const [copied, setCopied] = useState(false)
 
@@ -557,7 +557,7 @@ function MyRequestsPanel() {
   const { mutateAsync: cancel } = useCancelPayLink()
   const { showToast }        = useUiStore()
   const { data: rate }       = useExchangeRate()
-  const ngnRate              = parseFloat(rate?.effectiveRate ?? '0')
+  const ngnRate              = parseFloat(String(rate?.effectiveRate ?? 0))
   const [cancelling, setCancelling] = useState<string | null>(null)
 
   async function handleCancel(token: string) {
