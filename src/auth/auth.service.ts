@@ -116,9 +116,10 @@ export class AuthService {
     );
 
     // Send email verification OTP
-    await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
+    const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
       fullName: dto.fullName,
     });
+    this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
 
     return { userId: user.id, email: user.email };
   }
