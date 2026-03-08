@@ -94,7 +94,7 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
           Device,
           Otp,
           Transaction,
-          // ExchangeRate,
+          ExchangeRate,
           // BankTransfer,
           // VirtualCard,
           // Notification,
@@ -113,9 +113,9 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
     }),
     // Phase 1
     AuthModule,
-    // DevicesModule, OtpModule, StellarModule,
+    DevicesModule, OtpModule, StellarModule,
     // Phase 2
-    // WalletModule, RatesModule, TransactionsModule,
+    WalletModule, RatesModule, TransactionsModule,
     // Phase 3
     // SendModule,
     // Phase 4

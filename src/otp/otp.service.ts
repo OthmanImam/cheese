@@ -24,7 +24,7 @@ export class OtpService {
     email: string,
     type: OtpType,
     meta?: { fullName?: string },
-  ): Promise<void> {
+  ): Promise<string> {
     await this.otpRepo.update({ email, type, isUsed: false }, { isUsed: true });
 
     const code = String(randomInt(100_000, 999_999));
@@ -57,6 +57,8 @@ export class OtpService {
         expiresIn,
       });
     }
+
+    return code;
   }
 
   async verifyOtp(
