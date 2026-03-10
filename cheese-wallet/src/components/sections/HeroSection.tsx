@@ -53,18 +53,17 @@ export function HeroSection() {
         className="font-display text-6xl sm:text-7xl md:text-8xl font-bold text-white leading-[0.95] mb-6 opacity-0 animate-fade-up delay-200"
         style={{ letterSpacing: '-0.03em' }}
       >
-        Reserve your
+        Reserve your 
         <br />
-        <span className="text-shimmer">Cheese username</span>
+        <span className="text-shimmer">Cheese @username </span>
         <br />
-        before it&apos;s taken.
+    before it&apos;s taken.
       </h1>
 
       {/* Subtext */}
       <p className="max-w-md mx-auto text-lg text-[#888] leading-relaxed mb-12 opacity-0 animate-fade-up delay-300">
-        Cheese is a USD wallet where your username{' '}
-        <em className="text-white not-italic">is</em> your bank account.
-        Send money to anyone, anywhere.
+        Keep your money in dollars. Pay anyone in naira or USDC.{' '}
+        Send and receive money instantly with just a <em className="text-white not-italic">@username</em> .
       </p>
 
       {/* Marquee — @keyframes marquee defined in tailwind.config.js */}
