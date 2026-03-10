@@ -5,8 +5,13 @@
 // ─────────────────────────────────────────────────────────
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { useState, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useState, useEffect, type ReactNode } from 'react'
+
+const ReactQueryDevtools = lazy(() =>
+  import('@tanstack/react-query-devtools').then((mod) => ({
+    default: mod.ReactQueryDevtools,
+  }))
+)
 
 function makeQueryClient() {
   return new QueryClient({
@@ -57,7 +62,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        </Suspense>
       )}
     </QueryClientProvider>
   )

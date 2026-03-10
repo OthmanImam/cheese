@@ -122,6 +122,12 @@ export const useUiStore = create<UiState>()(
       name: 'cheese-ui',
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ theme: s.theme, balanceVisible: s.balanceVisible, onboarded: s.onboarded, autoLockMinutes: s.autoLockMinutes, biometricEnabled: s.biometricEnabled }),
+      // Force dark theme as default regardless of persisted state
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.theme = 'dark';
+        }
+      },
     },
   ),
 )

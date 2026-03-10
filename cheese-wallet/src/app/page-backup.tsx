@@ -1,3 +1,11 @@
+/*
+ * LANDING PAGE - ARCHIVED BACKUP
+ * This file contains the original full landing page code.
+ * Currently using waitlist page as the homepage instead.
+ * 
+ * See page.tsx for the current homepage implementation.
+ */
+
 // import type { Metadata } from 'next'
 
 // export const metadata: Metadata = {
@@ -13,53 +21,3 @@
 //     </>
 //   )
 // }
-
-import { Suspense } from 'react';
-import { HeroSection }        from '@/components/sections/HeroSection';
-import { WaitlistForm }       from '@/components/sections/WaitlistForm';
-import { FeaturesSection }    from '@/components/sections/FeaturesSection';
-import { LeaderboardPreview } from '@/components/sections/LeaderboardPreview';
-import { Footer }             from '@/components/sections/Footer';
-
-function FormSkeleton() {
-  return (
-    <section id="waitlist" className="px-6 pb-24">
-      <div className="max-w-lg mx-auto bg-[#111] border border-white/[0.07] rounded-2xl p-8 animate-pulse">
-        <div className="h-8 w-48 bg-[#1a1a1a] rounded mb-2" />
-        <div className="h-4 w-64 bg-[#1a1a1a] rounded mb-8" />
-        <div className="space-y-4">
-          <div className="h-12 bg-[#1a1a1a] rounded-xl" />
-          <div className="h-12 bg-[#1a1a1a] rounded-xl" />
-          <div className="h-14 bg-[#1a1a1a] rounded-xl" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-[#0a0a0a] overflow-hidden">
-      {/* Ambient radial glow */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(212,168,67,0.07)_0%,transparent_70%)]" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-[radial-gradient(circle,rgba(212,168,67,0.03)_0%,transparent_70%)]" />
-      </div>
-
-      <HeroSection />
-
-      {/* WaitlistForm uses useSearchParams — must be wrapped in Suspense in Next.js 14 */}
-      <Suspense fallback={<FormSkeleton />}>
-        <WaitlistForm />
-      </Suspense>
-
-      <FeaturesSection />
-
-      <Suspense>
-        <LeaderboardPreview />
-      </Suspense>
-
-      <Footer />
-    </main>
-  );
-}
