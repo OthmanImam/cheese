@@ -11,14 +11,20 @@ export class LeaderboardService {
   ) {}
 
   async getTopUsers(limit: number = 100) {
-    return this.userRepo
+    const users = await this.userRepo
       .createQueryBuilder('user')
       .select(['user.username', 'user.points', 'user.createdAt'])
       .where('user.points > 0')
       .orderBy('user.points', 'DESC')
       .addOrderBy('user.createdAt', 'ASC')
       .limit(limit)
-      .getRawMany();
+      .getMany();
+    
+    return users.map(u => ({
+      username: u.username,
+      points: u.points,
+      createdAt: u.createdAt,
+    }));
   }
 
   async getUserRank(username: string) {
@@ -45,17 +51,20 @@ export class LeaderboardService {
   }
 
   async getStats() {
-    const totalUsers = await this.userRepo.count({ where: { points: 0 } });
+    // Count all users (not just those with 0 points)
+    const totalUsers = await this.userRepo.count();
+    // Count users with points > 0
     const activeUsers = await this.userRepo.count({ where: { points: MoreThan(0) } });
-    const totalPoints = await this.userRepo
+    // Sum all points
+    const totalPointsResult = await this.userRepo
       .createQueryBuilder('u')
-      .select('SUM(u.points)', 'sum')
+      .select('COALESCE(SUM(u.points), 0)', 'sum')
       .getRawOne();
 
     return {
       totalUsers,
       activeUsers,
-      totalPoints: parseInt(totalPoints.sum) || 0,
+      totalPoints: parseInt(totalPointsResult?.sum || '0') || 0,
     };
   }
 }

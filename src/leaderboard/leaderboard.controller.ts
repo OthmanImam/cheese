@@ -1,6 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { LeaderboardService } from './leaderboard.service';
+import { Public } from 'src/common/decorators/public.decorator';
 
+@Public()
 @Controller('leaderboard')
 export class LeaderboardController {
   constructor(private readonly leaderboardService: LeaderboardService) {}

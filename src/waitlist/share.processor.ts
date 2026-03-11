@@ -42,10 +42,23 @@ export class ShareProcessor extends WorkerHost {
         const points = PLATFORM_POINTS[platform as SharePlatform] ?? 0;
         shareEvent.verified = true;
         shareEvent.pointsAwarded = points;
-        shareEvent.user.points += points;
 
+        // Save share event first
         await this.shareRepo.save(shareEvent);
-        await this.userRepo.save(shareEvent.user);
+
+        // Update user points directly via query builder to ensure proper persistence
+        const updateResult = await this.userRepo
+          .createQueryBuilder('user')
+          .update(User)
+          .set({ points: () => `points + ${points}` })
+          .where('id = :userId', { userId: shareEvent.user.id })
+          .execute();
+
+        // Reload user to get updated points
+        const updatedUser = await this.userRepo.findOne({
+          where: { id: shareEvent.user.id },
+          select: ['id', 'points'],
+        });
 
         // Notify user of points awarded
         this.notificationsService.notifyShareVerified(shareEvent.user.id, platform, points).catch(() => {});

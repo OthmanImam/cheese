@@ -5,7 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { Loader2, Check, X, ChevronRight } from 'lucide-react';
-import { registerWaitlist, checkUsername } from '@/lib/api';
+import { registerWaitlist, checkUsername, UsernameCheckResponse } from '@/lib/api';
 
 function useDebounce<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -30,7 +30,7 @@ export function WaitlistForm() {
   // Debounce the CLEANED username before hitting the API
   const debouncedUsername = useDebounce(username, 400);
 
-  const { data: availability, isFetching: checking } = useQuery({
+  const { data: availability, isFetching: checking } = useQuery<UsernameCheckResponse, Error>({
     queryKey: ['check-username', debouncedUsername],
     queryFn: () => checkUsername(debouncedUsername),
     enabled: debouncedUsername.length >= 3,
@@ -55,7 +55,10 @@ export function WaitlistForm() {
     e.preventDefault();
     if (!email) { toast.error('Please enter your email'); return; }
     if (username.length < 3) { toast.error('Username must be at least 3 characters'); return; }
-    if (availability && !availability.available) { toast.error('That username is taken'); return; }
+    if (availability && availability.username === username && !availability.available) {
+      toast.error('That username is taken');
+      return;
+    }
 
     register.mutate({ email: email.toLowerCase().trim(), username, referralCode: refCode || undefined });
   };
@@ -63,7 +66,8 @@ export function WaitlistForm() {
   const status = (() => {
     if (username.length < 3) return null;
     if (checking) return 'checking';
-    if (!availability) return null;
+    // don't act on a stale availability result from a different username
+    if (!availability || availability.username !== username) return null;
     return availability.available ? 'available' : 'taken';
   })();
 

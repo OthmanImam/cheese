@@ -65,7 +65,19 @@ export default function WaitlistForm() {
   };
 
   const checkUsernameAvailability = async (username: string) => {
+    // if the user has already changed the input to something else, bail early
+    if (username !== formData.username) {
+      // we don't even clear the error here; the caller will rerun once the
+      // latest value settles (debounced) or the length drops below the
+      // threshold. this avoids flicker caused by out‑of‑order network
+      // responses.
+      return;
+    }
+
     if (username.length < 3) {
+      // short usernames don't hit the API, but we still want to wipe any
+      // previous error so that the red message doesn't linger when the user
+      // deletes characters.
       setUsernameError('');
       setCheckingUsername(false);
       return;
@@ -78,7 +90,11 @@ export default function WaitlistForm() {
       );
       const data = await response.json();
       console.log('Username check response:', data);
-      
+
+      // make sure the response corresponds to the current input; the value
+      // could have changed while we were waiting for the network round‑trip
+      if (username !== formData.username) return;
+
       if (!data.available) {
         setUsernameError(data.reason || 'Username is taken');
       } else {
@@ -86,9 +102,14 @@ export default function WaitlistForm() {
       }
     } catch (err) {
       console.error('Error checking username:', err);
-      setUsernameError('Could not verify username availability');
+      // only show an error when the username hasn't already moved on
+      if (username === formData.username) {
+        setUsernameError('Could not verify username availability');
+      }
     } finally {
-      setCheckingUsername(false);
+      if (username === formData.username) {
+        setCheckingUsername(false);
+      }
     }
   };
 
@@ -100,6 +121,14 @@ export default function WaitlistForm() {
     }
 
     setFormData((prev) => ({ ...prev, username: normalized }));
+
+    // immediately clear any error when the username drops below the
+    // minimum length so the UI doesn't linger with a red message while we
+    // wait for the debounce to fire.
+    if (normalized.length < 3) {
+      setUsernameError('');
+      setCheckingUsername(false);
+    }
 
     // Clear previous timer
     if (debounceTimer.current) {

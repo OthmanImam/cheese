@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   Req,
+  Res,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -19,7 +20,7 @@ import {
   ApiParam,
   ApiResponse,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { WaitlistService } from './waitlist.service';
 import { CheckUsernameDto, RegisterDto, ShareDto } from './dto/waitlist.dto';
@@ -174,7 +175,16 @@ export class WaitlistController {
       },
     },
   })
-  getUserPoints(@Param('userId') userId: string) {
+  getUserPoints(
+    @Param('userId') userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // Disable caching to ensure fresh points data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
     return this.waitlistService.getUserPoints(userId);
   }
 

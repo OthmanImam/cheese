@@ -100,8 +100,13 @@ export class WaitlistService {
 
       // Award referral points to referrer inside same transaction
       if (referrer) {
-        referrer.points += REFERRAL_POINTS;
-        await queryRunner.manager.save(referrer);
+        // Use QueryBuilder to reliably increment referrer's points
+        await queryRunner.manager
+          .createQueryBuilder()
+          .update(User)
+          .set({ points: () => `points + ${REFERRAL_POINTS}` })
+          .where('id = :id', { id: referrer.id })
+          .execute();
 
         const referralEvent = queryRunner.manager.create(ReferralEvent, {
           referrerId: referrer.id,
@@ -238,6 +243,7 @@ export class WaitlistService {
   // ── User Points ───────────────────────────────────────────────────────────
 
   async getUserPoints(userId: string) {
+    // Force read from primary DB (bypass any read replicas) to ensure latest points
     const user = await this.userRepo.findOne({
       where: { id: userId },
       select: ['id', 'username', 'points'],
@@ -247,7 +253,13 @@ export class WaitlistService {
     const shareCount = await this.shareRepo.count({ where: { userId, verified: true } });
     const referralCount = await this.referralRepo.count({ where: { referrerId: userId } });
 
-    return { points: user.points, shareCount, referralCount };
+    return { 
+      points: user.points, 
+      shareCount, 
+      referralCount,
+      // Add a timestamp to help with cache invalidation on the frontend
+      timestamp: new Date().toISOString(),
+    };
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
