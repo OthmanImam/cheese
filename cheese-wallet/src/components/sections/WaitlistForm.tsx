@@ -169,7 +169,7 @@ export function WaitlistForm() {
     [Zap,    'Instant'],
     [Gift,   'Free'],
   ] as [LucideIcon, string][]).map(([Icon, text]) => (
-    <div key={text} className="flex items-center gap-1.5 text-xs text-[#444]">
+    <div key={text} className="flex items-center gap-1.5 text-m text-[#d4a843]">
       <Icon size={13} />
       <span>{text}</span>
     </div>
