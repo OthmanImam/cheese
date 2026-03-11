@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, Check, X, ChevronRight } from 'lucide-react';
-import { registerWaitlist, checkUsername, UsernameCheckResponse } from '@/lib/api';
+import { Loader2, Check, X, ChevronRight, Shield, Zap, Gift, type LucideIcon} from 'lucide-react';
+import { registerWaitlist, checkUsername } from '@/lib/api';
 
 function useDebounce<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -15,6 +15,8 @@ function useDebounce<T>(value: T, ms: number): T {
   }, [value, ms]);
   return v;
 }
+
+
 
 export function WaitlistForm() {
   const router = useRouter();
@@ -30,7 +32,7 @@ export function WaitlistForm() {
   // Debounce the CLEANED username before hitting the API
   const debouncedUsername = useDebounce(username, 400);
 
-  const { data: availability, isFetching: checking } = useQuery<UsernameCheckResponse, Error>({
+  const { data: availability, isFetching: checking } = useQuery({
     queryKey: ['check-username', debouncedUsername],
     queryFn: () => checkUsername(debouncedUsername),
     enabled: debouncedUsername.length >= 3,
@@ -55,10 +57,7 @@ export function WaitlistForm() {
     e.preventDefault();
     if (!email) { toast.error('Please enter your email'); return; }
     if (username.length < 3) { toast.error('Username must be at least 3 characters'); return; }
-    if (availability && availability.username === username && !availability.available) {
-      toast.error('That username is taken');
-      return;
-    }
+    if (availability && !availability.available) { toast.error('That username is taken'); return; }
 
     register.mutate({ email: email.toLowerCase().trim(), username, referralCode: refCode || undefined });
   };
@@ -66,8 +65,7 @@ export function WaitlistForm() {
   const status = (() => {
     if (username.length < 3) return null;
     if (checking) return 'checking';
-    // don't act on a stale availability result from a different username
-    if (!availability || availability.username !== username) return null;
+    if (!availability) return null;
     return availability.available ? 'available' : 'taken';
   })();
 
@@ -116,7 +114,7 @@ export function WaitlistForm() {
                     type="text"
                     value={rawUsername}
                     onChange={(e) => setRawUsername(e.target.value)}
-                    placeholder="yourname"
+                    placeholder="username"
                     maxLength={24}
                     disabled={register.isPending}
                     className="w-full bg-[#1a1a1a] border border-white/[0.08] rounded-xl pl-8 pr-11 py-3.5 text-white text-sm font-mono placeholder-[#444] focus:outline-none focus:border-[#d4a843]/40 transition-colors disabled:opacity-50"
@@ -158,13 +156,25 @@ export function WaitlistForm() {
             </form>
 
             {/* Trust signals */}
-            <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
+            {/* <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
               {[['🔒', 'Secure'], ['⚡', 'Instant'], ['🆓', 'Free']].map(([icon, text]) => (
                 <div key={text} className="flex items-center gap-1.5 text-xs text-[#444]">
                   <span>{icon}</span><span>{text}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
+           <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
+  {([
+    [Shield, 'Secure'],
+    [Zap,    'Instant'],
+    [Gift,   'Free'],
+  ] as [LucideIcon, string][]).map(([Icon, text]) => (
+    <div key={text} className="flex items-center gap-1.5 text-m text-[#d4a843]">
+      <Icon size={13} />
+      <span>{text}</span>
+    </div>
+  ))}
+</div>
           </div>
         </div>
       </div>

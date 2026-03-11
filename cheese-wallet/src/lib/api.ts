@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -91,7 +91,7 @@ export async function trackShare(payload: SharePayload): Promise<ShareResponse> 
 }
 
 export async function getLeaderboard(): Promise<LeaderboardResponse> {
-  const { data } = await api.get<LeaderboardResponse>('/leaderboard');
+  const { data } = await api.get<LeaderboardResponse>('/waitlist/leaderboard');
   return data;
 }
 

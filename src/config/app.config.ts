@@ -45,7 +45,7 @@ export const otpConfig = registerAs('otp', () => ({
   smtpUser: process.env.SMTP_USER,
   smtpPass: process.env.SMTP_PASS,
   emailFrom:
-    process.env.EMAIL_FROM || 'Cheese Wallet <noreply@cheesewallet.app>',
+    process.env.EMAIL_FROM || 'Cheese Pay <noreply@cheesepay.xyz>',
 }));
 
 export const ratesConfig = registerAs('rates', () => ({
@@ -55,7 +55,7 @@ export const ratesConfig = registerAs('rates', () => ({
 
 export const emailConfig = registerAs('email', () => ({
   zeptoApiKey: process.env.ZEPTOMAIL_API_KEY || '',
-  fromAddress: process.env.ZEPTOMAIL_FROM_ADDRESS || 'noreply@cheesewallet.app',
-  fromName: process.env.ZEPTOMAIL_FROM_NAME || 'Cheese Wallet',
-  replyTo: process.env.ZEPTOMAIL_REPLY_TO || 'support@cheesewallet.app',
+  fromAddress: process.env.ZEPTOMAIL_FROM_ADDRESS || 'noreply@cheesepay.xyz',
+  fromName: process.env.ZEPTOMAIL_FROM_NAME || 'Cheese Pay',
+  replyTo: process.env.ZEPTOMAIL_REPLY_TO || 'support@cheesepay.xyz',
 }));

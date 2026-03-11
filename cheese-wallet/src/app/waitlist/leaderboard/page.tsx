@@ -7,7 +7,7 @@ import { Trophy, Users, ArrowLeft, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:4000';
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-xl">🥇</span>;
@@ -65,16 +65,18 @@ export default function LeaderboardPage() {
               <span className="text-xs text-[#d4a843] uppercase tracking-widest font-medium">Founding Members</span>
             </div>
             <h1 className="font-display text-5xl font-bold text-white tracking-tight">Leaderboard</h1>
+                    <p className="text-xl text-[#555] mt-2">Top 100 members get $5 after their first transaction. T&amp;C applies.</p>
+
           </div>
           <div className="flex flex-col items-end gap-2 pt-1">
-            <div className="flex items-center gap-1.5">
+            {/* <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-[#d4a843] animate-pulse' : 'bg-[#333]'}`} />
               <span className="text-xs text-[#555]">{isLive ? 'Live' : 'Offline'}</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-[#555]">
+            </div> */}
+            {/* <div className="flex items-center gap-1.5 text-xs text-[#555]">
               <Users className="w-3.5 h-3.5" />
               <span>{total.toLocaleString()} members</span>
-            </div>
+            </div> */}
           </div>
         </div>
 

@@ -17,6 +17,8 @@ import { ReferralEvent, REFERRAL_POINTS } from './entities/referral-event.entity
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto, ShareDto } from './dto/waitlist.dto';
+import { WaitlistEntry } from './entities/waitlist-entry.entity';
+import { Cron } from '@nestjs/schedule';
 
 const RESERVED_USERNAMES = new Set([
   'admin', 'cheese', 'support', 'help', 'api', 'www', 'app',
@@ -24,6 +26,10 @@ const RESERVED_USERNAMES = new Set([
   'security', 'legal', 'billing', 'payments', 'wallet', 'system',
   'root', 'null', 'undefined', 'anonymous', 'guest',
 ]);
+// How many days after joining before we send the first reminder
+const FIRST_REMINDER_DAYS = 7;
+const SECOND_REMINDER_DAYS = 21;
+const RELEASE_DAYS = 90; // unreserve if no signup after this long
 
 @Injectable()
 export class WaitlistService {
@@ -242,11 +248,26 @@ export class WaitlistService {
 
   // ── User Points ───────────────────────────────────────────────────────────
 
-  async getUserPoints(userId: string) {
-    // Force read from primary DB (bypass any read replicas) to ensure latest points
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      select: ['id', 'username', 'points'],
+  async getEntryByEmail(email: string): Promise<WaitlistEntry | null> {
+    return this.entryRepo.findOne({ where: { email } });
+  }
+
+  // ────────────────────────────────────────────────────────
+  // SCHEDULED: Send reminders to unconverted waitlist entries
+  // Runs every day at 9 AM WAT (8 AM UTC)
+  // ────────────────────────────────────────────────────────
+  @Cron('0 8 * * *', { timeZone: 'UTC' })
+  async sendReminders(): Promise<void> {
+    const appUrl = this.config.get<string>(
+      'app.frontendUrl',
+      'https://cheesepay.xyz',
+    );
+    const signupBase = `${appUrl}/signup`;
+    const now = new Date();
+
+    // Fetch all pending (not converted, not yet released) entries
+    const entries = await this.entryRepo.find({
+      where: { status: WaitlistStatus.PENDING },
     });
     if (!user) throw new NotFoundException('User not found');
 

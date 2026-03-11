@@ -34,9 +34,10 @@
 //     </html>
 //   )
 // }
-import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
-import './globals.css';
+import type { Metadata } from 'next'
+import './globals.css'
+import { QueryProvider } from '@/providers/QueryProvider'
 import { Providers } from '@/lib/providers';
 
 export const metadata: Metadata = {
@@ -57,6 +58,7 @@ export const metadata: Metadata = {
     description: 'Send money to anyone with just a username. Secure yours before launch.',
     images: ['/og-image.png'],
   },
+  icons: { icon: '/icons/icon-192.png' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
