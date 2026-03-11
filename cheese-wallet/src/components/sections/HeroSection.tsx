@@ -8,6 +8,44 @@ const USERNAMES = [
   '@felix', '@nia', '@omar', '@yuki', '@liam', '@sofia',
 ];
 
+const NAMES = ["username", "Othman", "CalebUx", "Zintarh"];
+
+function TypewriterName(): JSX.Element {
+  const [nameIndex, setNameIndex] = useState(0);
+  const [displayed, setDisplayed] = useState("username");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const current = NAMES[nameIndex];
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting) {
+        if (displayed.length < current.length) {
+          setDisplayed(current.slice(0, displayed.length + 1));
+        } else {
+          setTimeout(() => setIsDeleting(true), 1500); // pause before deleting
+        }
+      } else {
+        if (displayed.length > 0) {
+          setDisplayed(current.slice(0, displayed.length - 1));
+        } else {
+          setIsDeleting(false);
+          setNameIndex((prev) => (prev + 1) % NAMES.length);
+        }
+      }
+    }, isDeleting ? 80 : 120);
+
+    return () => clearTimeout(timeout);
+  }, [displayed, isDeleting, nameIndex]);
+
+  return (
+    <span className="text-shimmer">
+      @<span>{displayed}</span>
+      <span className="animate-pulse">|</span>
+    </span>
+  );
+}
+
 export function HeroSection() {
   const [displayCount, setDisplayCount] = useState(0);
   const TARGET = 2847;
@@ -25,6 +63,7 @@ export function HeroSection() {
   }, []);
 
   return (
+
     <section className="relative pt-32 pb-16 px-6 text-center">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(10,10,10,0.85)] backdrop-blur-md border-b border-white/[0.04]">
@@ -48,8 +87,20 @@ export function HeroSection() {
         </span>
       </div>
 
-      {/* Headline */}
       <h1
+  className="font-display text-6xl sm:text-7xl md:text-8xl font-bold text-white leading-[0.95] mb-6 opacity-0 animate-fade-up delay-200"
+  style={{ letterSpacing: '-0.03em' }}
+>
+  Reserve your
+        <br />
+        Cheese{' '}
+  <TypewriterName />
+  <br />
+  before it&apos;s taken.
+</h1>
+
+      {/* Headline */}
+      {/* <h1
         className="font-display text-6xl sm:text-7xl md:text-8xl font-bold text-white leading-[0.95] mb-6 opacity-0 animate-fade-up delay-200"
         style={{ letterSpacing: '-0.03em' }}
       >
@@ -58,7 +109,9 @@ export function HeroSection() {
         <span className="text-shimmer">Cheese @username </span>
         <br />
     before it&apos;s taken.
-      </h1>
+      </h1> */}
+
+      
 
       {/* Subtext */}
       <p className="max-w-md mx-auto text-lg text-[#888] leading-relaxed mb-12 opacity-0 animate-fade-up delay-300">

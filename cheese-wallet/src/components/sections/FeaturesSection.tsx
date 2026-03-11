@@ -27,8 +27,8 @@ export function FeaturesSection() {
   return (
     <section className="px-6 py-16 max-w-4xl mx-auto">
       <div className="text-center mb-12">
-        <p className="text-xs text-[#d4a843] uppercase tracking-widest mb-3 font-medium">Why Cheese</p>
-        <h2 className="font-display text-4xl font-bold text-white tracking-tight">Money, simplified.</h2>
+        <p className="text-xl text-[#d4a843] uppercase tracking-widest mb-3 font-medium">Why Cheese?</p>
+        <h2 className="font-display text-4xl font-bold text-white tracking-tight">Making money is hard. Spending it should be easy.</h2>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
