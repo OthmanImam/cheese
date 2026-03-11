@@ -47,7 +47,7 @@ export interface PayLinkView {
   status: PayLinkStatus;
   expiresAt: Date;
   createdAt: Date;
-  creator: { username: string; fullName: string };
+  creator: { username: string; fullName: string | null };
   payer: { username: string } | null;
   paidAt: Date | null;
 }
@@ -87,7 +87,7 @@ export class PayLinkService {
 
   private toView(
     pr: PaymentRequest,
-    creator: { username: string; fullName: string },
+    creator: { username: string; fullName: string | null },
     payerUsername?: string | null,
   ): PayLinkView {
     return {

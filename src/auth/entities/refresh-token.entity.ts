@@ -20,8 +20,8 @@ export class RefreshToken {
   @Column({ name: 'device_id', type: 'varchar', nullable: true })
   deviceId: string | null;
 
-  @Column({ name: 'expires_at', type: 'integer', transformer: {
-    from: (value: number) => new Date(value),
+  @Column({ name: 'expires_at', type: 'bigint', transformer: {
+    from: (value: number) => new Date(Number(value)),
     to: (value: Date) => value.getTime(),
   } })
   expiresAt: Date;

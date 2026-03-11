@@ -54,7 +54,7 @@ export class PaymentRequest {
   status: PayLinkStatus;
 
   // ── Expiry — default 7 days ───────────────────────────────
-  @Column({ name: 'expires_at', type: 'integer', transformer: {
+  @Column({ name: 'expires_at', type: 'bigint', transformer: {
     from: (value: number) => new Date(value),
     to: (value: Date) => value.getTime(),
   } })

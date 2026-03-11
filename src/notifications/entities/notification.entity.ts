@@ -12,6 +12,11 @@ export enum NotificationType {
   MONEY = 'money',
   SECURITY = 'security',
   SYSTEM = 'system',
+  REFERRAL_JOINED = 'referral_joined',
+  POINTS_AWARDED = 'points_awarded',
+  MILESTONE_REACHED = 'milestone_reached',
+  LAUNCH_ANNOUNCEMENT = 'launch_announcement',
+  LEADERBOARD_UPDATE = 'leaderboard_update',
 }
 
 @Entity('notifications')
