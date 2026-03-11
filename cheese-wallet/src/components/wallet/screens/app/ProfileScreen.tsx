@@ -68,7 +68,7 @@ export function ProfileScreen() {
   const { data: referral } = useReferral()
 
   function handleReferral() {
-    const link = referral?.link ?? `https://cheesewallet.app/r/${displayUser?.username ?? ''}`
+    const link = referral?.link ?? `https://cheesepay.xyz/r/${displayUser?.username ?? ''}`
     if (navigator.share) {
       navigator.share({ title: 'Join Cheese Wallet', text: 'Get $5 when you sign up', url: link }).catch(() => {})
     } else {

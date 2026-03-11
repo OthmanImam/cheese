@@ -21,7 +21,7 @@ import { User } from '../auth/entities/user.entity';
 // How many days after joining before we send the first reminder
 const FIRST_REMINDER_DAYS = 7;
 const SECOND_REMINDER_DAYS = 21;
-const RELEASE_DAYS = 60; // unreserve if no signup after this long
+const RELEASE_DAYS = 90; // unreserve if no signup after this long
 
 @Injectable()
 export class WaitlistService {
@@ -188,7 +188,7 @@ export class WaitlistService {
   async sendReminders(): Promise<void> {
     const appUrl = this.config.get<string>(
       'app.frontendUrl',
-      'https://cheesewallet.app',
+      'https://cheesepay.xyz',
     );
     const signupBase = `${appUrl}/signup`;
     const now = new Date();

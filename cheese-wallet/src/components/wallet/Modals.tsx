@@ -213,7 +213,7 @@ export function AskReceiveModal() {
   const addr                        = address?.address ?? '0x…'
   const { user }                    = useAuthStore()
   const username                    = user?.username ?? 'you'
-  const paymentLink                 = `cheesewallet.app/@${username}`
+  const paymentLink                 = `cheesepay.xyz/@${username}`
 
   function copyUsername() {
     navigator.clipboard?.writeText(paymentLink).catch(() => {})
