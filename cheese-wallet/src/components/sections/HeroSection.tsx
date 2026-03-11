@@ -8,7 +8,7 @@ const USERNAMES = [
   '@felix', '@nia', '@omar', '@yuki', '@liam', '@sofia',
 ];
 
-const NAMES = ["username", "Othman", "CalebUx", "Zintarh"];
+const NAMES = ["username", "Othman", "CalebUx", "Zintarh", "Utility"];
 
 function TypewriterName(): JSX.Element {
   const [nameIndex, setNameIndex] = useState(0);
