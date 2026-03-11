@@ -114,7 +114,7 @@ export function WaitlistForm() {
                     type="text"
                     value={rawUsername}
                     onChange={(e) => setRawUsername(e.target.value)}
-                    placeholder="yourname"
+                    placeholder="username"
                     maxLength={24}
                     disabled={register.isPending}
                     className="w-full bg-[#1a1a1a] border border-white/[0.08] rounded-xl pl-8 pr-11 py-3.5 text-white text-sm font-mono placeholder-[#444] focus:outline-none focus:border-[#d4a843]/40 transition-colors disabled:opacity-50"
