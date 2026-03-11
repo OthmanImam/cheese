@@ -65,6 +65,8 @@ export default function LeaderboardPage() {
               <span className="text-xs text-[#d4a843] uppercase tracking-widest font-medium">Founding Members</span>
             </div>
             <h1 className="font-display text-5xl font-bold text-white tracking-tight">Leaderboard</h1>
+                    <p className="text-xl text-[#555] mt-2">Top 100 members get $5 after their first transaction. T&amp;C applies.</p>
+
           </div>
           <div className="flex flex-col items-end gap-2 pt-1">
             {/* <div className="flex items-center gap-1.5">

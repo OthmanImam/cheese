@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, Check, X, ChevronRight } from 'lucide-react';
+import { Loader2, Check, X, ChevronRight, Shield, Zap, Gift } from 'lucide-react';
 import { registerWaitlist, checkUsername } from '@/lib/api';
 
 function useDebounce<T>(value: T, ms: number): T {
@@ -15,6 +15,8 @@ function useDebounce<T>(value: T, ms: number): T {
   }, [value, ms]);
   return v;
 }
+
+
 
 export function WaitlistForm() {
   const router = useRouter();
@@ -154,13 +156,25 @@ export function WaitlistForm() {
             </form>
 
             {/* Trust signals */}
-            <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
+            {/* <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
               {[['🔒', 'Secure'], ['⚡', 'Instant'], ['🆓', 'Free']].map(([icon, text]) => (
                 <div key={text} className="flex items-center gap-1.5 text-xs text-[#444]">
                   <span>{icon}</span><span>{text}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
+            <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-white/[0.05]">
+  {[
+    [Shield, 'Secure'],
+    [Zap,    'Instant'],
+    [Gift,   'Free'],
+  ].map(([Icon, text]) => (
+    <div key={text} className="flex items-center gap-1.5 text-m text-[#d4a843]">
+      <Icon size={13} />
+      <span>{text}</span>
+    </div>
+  ))}
+</div>
           </div>
         </div>
       </div>

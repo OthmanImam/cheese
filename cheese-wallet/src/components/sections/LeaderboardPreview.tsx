@@ -22,7 +22,7 @@ export function LeaderboardPreview() {
           <span className="text-xs text-[#d4a843] uppercase tracking-widest font-medium">Founding Members</span>
         </div>
         <h2 className="font-display text-4xl font-bold text-white tracking-tight">Leaderboard</h2>
-        <p className="text-sm text-[#555] mt-2">Top members get early access and exclusive perks.</p>
+        <p className="text-xl text-[#555] mt-2">Top 100 members get $5 after their first transaction .</p>
       </div>
 
       <div className="bg-[#111] border border-white/[0.06] rounded-2xl overflow-hidden mb-4">
