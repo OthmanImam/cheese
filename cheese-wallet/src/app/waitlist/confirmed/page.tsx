@@ -90,7 +90,7 @@ export default function ConfirmedPage() {
     mutationFn: ({ platformId }: { platformId: PlatformId }) =>
       trackShare({ userId: user!.id, platform: platformId }),
     onSuccess: (data, vars) => {
-      setSharedPlatforms((prev) => new Set([...prev, vars.platformId]));
+      setSharedPlatforms((prev) => new Set([...Array.from(prev), vars.platformId]));
       setTotalPoints((prev) => prev + (data.pendingPoints || 0));
       toast.success(`+${data.pendingPoints} points pending verification!`);
     },
