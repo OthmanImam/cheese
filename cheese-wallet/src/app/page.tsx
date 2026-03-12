@@ -17,10 +17,10 @@ import { FeaturesSection } from '@/components/sections/FeaturesSection'
 import { LeaderboardPreview } from '@/components/sections/LeaderboardPreview'
 import { Footer } from '@/components/sections/Footer'
 
-export const metadata: Metadata = {
-  title: 'Cheese Wallet — Dollar Wallet for Smart Nigerians',
-  description: 'Hold your money in US dollars. Send and receive Naira instantly. Earn yield on your balance. Built for Nigeria.',
-}
+// export const metadata: Metadata = {
+//   title: 'Cheese Wallet — Dollar Wallet for Smart Nigerians',
+//   description: 'Hold your money in US dollars. Send and receive Naira instantly. Earn yield on your balance. Built for Nigeria.',
+// }
 
 function FormSkeleton() {
   return (

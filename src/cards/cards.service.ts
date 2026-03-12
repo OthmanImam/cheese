@@ -121,7 +121,7 @@ export class CardsService {
       last4,
       expiryMonth: expiry.month,
       expiryYear: expiry.year,
-      holderName: user.fullName.toUpperCase(),
+      holderName: (user.fullName || user.username).toUpperCase(),
       network: CardNetwork.MASTERCARD,
       status: CardStatus.ACTIVE,
       spendLimit: '500.000000',

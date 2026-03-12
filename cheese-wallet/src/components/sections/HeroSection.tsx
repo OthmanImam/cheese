@@ -63,7 +63,6 @@ export function HeroSection() {
   }, []);
 
   return (
-
     <section className="relative pt-32 pb-16 px-6 text-center">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-8 py-5 bg-[rgba(10,10,10,0.85)] backdrop-blur-md border-b border-white/[0.04]">

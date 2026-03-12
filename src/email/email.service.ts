@@ -46,6 +46,8 @@ export class EmailService {
     );
   }
 
+  private get frontendUrl() { return this.config.get<string>('app.frontendUrl', 'https://cheese.app'); }
+
   // ── Core send ─────────────────────────────────────────────
   private async send(payload: SendPayload): Promise<void> {
     if (!this.apiKey) {
@@ -147,12 +149,12 @@ export class EmailService {
 
   async sendSignupSuccess(params: {
     to: string;
-    fullName: string;
+    fullName: string | null;
     username: string;
     appUrl?: string;
   }): Promise<void> {
     const { subject, html } = signupSuccess({
-      fullName: params.fullName,
+      fullName: params.fullName || params.username,
       username: params.username,
       appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
     });
@@ -177,12 +179,12 @@ export class EmailService {
 
   async sendPasswordChanged(params: {
     to: string;
-    fullName: string;
+    fullName: string | null;
     changedAt?: string;
     deviceName?: string;
   }): Promise<void> {
     const { subject, html } = passwordChanged({
-      fullName: params.fullName,
+      fullName: params.fullName || 'User',
       changedAt:
         params.changedAt ||
         new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }),
@@ -193,7 +195,7 @@ export class EmailService {
 
   async sendMoneyReceived(params: {
     to: string;
-    fullName: string;
+    fullName: string | null;
     amountUsdc: string;
     amountNgn?: string;
     txHash?: string;
@@ -202,6 +204,7 @@ export class EmailService {
   }): Promise<void> {
     const { subject, html } = moneyReceived({
       ...params,
+      fullName: params.fullName || 'User',
       appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
     });
     await this.send({ to: params.to, subject, html });
@@ -209,7 +212,7 @@ export class EmailService {
 
   async sendMoneySent(params: {
     to: string;
-    fullName: string;
+    fullName: string | null;
     amountUsdc: string;
     amountNgn?: string;
     recipientName?: string;
@@ -222,6 +225,7 @@ export class EmailService {
   }): Promise<void> {
     const { subject, html } = moneySent({
       ...params,
+      fullName: params.fullName || 'User',
       appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
     });
     await this.send({ to: params.to, subject, html });
@@ -299,6 +303,58 @@ export class EmailService {
       benefits: tierUpgradeBenefits[params.toTier.toLowerCase()] || [],
     });
     await this.send({ to: params.to, subject, html });
+  }
+
+  async sendRegistrationEmail(user: any): Promise<void> {
+    const link = `${this.frontendUrl || 'https://cheese.app'}/waitlist?ref=${user.referralCode}`;
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+      <tr>
+        <td style="padding:48px 48px 32px;background:#111111;border-radius:16px 16px 0 0;border-bottom:1px solid #1f1f1f;">
+          <p style="margin:0;font-size:24px;font-weight:700;color:#d4a843;">🧀 Cheese</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:40px 48px;background:#111111;">
+          <h1 style="margin:0 0 8px;font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px;">@${user.username} is yours.</h1>
+          <p style="margin:0 0 32px;font-size:16px;color:#888;line-height:1.6;">Your Cheese username is officially reserved. No one else can take it.</p>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px 28px;margin-bottom:32px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">YOUR USERNAME</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#d4a843;">@${user.username}</p>
+          </div>
+          <p style="margin:0 0 16px;font-size:15px;color:#ccc;font-weight:600;">Move up the leaderboard 🏆</p>
+          <p style="margin:0 0 24px;font-size:14px;color:#888;line-height:1.6;">Share your link to earn points. Top spots get early access and exclusive perks.</p>
+          <a href="${link}" style="display:inline-block;background:#d4a843;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;">Share My Reservation →</a>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;margin-top:32px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">YOUR REFERRAL LINK</p>
+            <p style="margin:0;font-size:13px;color:#d4a843;word-break:break-all;">${link}</p>
+          </div>
+          <p style="margin:32px 0 0;font-size:13px;color:#555;line-height:1.7;">
+            Referrals earn <strong style="color:#d4a843;">20 pts</strong> each.
+            Twitter shares earn <strong style="color:#d4a843;">10 pts</strong>,
+            LinkedIn <strong style="color:#d4a843;">8 pts</strong>, and more.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 48px;background:#0d0d0d;border-radius:0 0 16px 16px;border-top:1px solid #1f1f1f;">
+          <p style="margin:0;font-size:12px;color:#444;line-height:1.6;">
+            You're receiving this because you joined the Cheese Wallet waitlist.<br>
+            © 2025 Cheese Wallet. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+    await this.send({ to: user.email, subject: '🧀 Your Cheese username is reserved', html });
   }
 
   async sendWaitlistReminder(params: {

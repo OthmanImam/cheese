@@ -11,6 +11,7 @@ import { Exclude } from 'class-transformer';
 import { Device } from '../../devices/entities/device.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Transaction } from '../../transactions/entities/transaction.entity';
+import { ShareEvent } from '../../waitlist/entities/share-event.entity';
 
 export enum KycStatus {
   PENDING = 'pending',
@@ -32,18 +33,18 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ unique: true })
-  phone: string;
+  @Column({ unique: true, nullable: true, type: 'varchar' })
+  phone: string | null;
 
   @Column({ unique: true })
   username: string;
 
-  @Column({ name: 'full_name' })
-  fullName: string;
+  @Column({ name: 'full_name', nullable: true, type: 'varchar' })
+  fullName: string | null;
 
   @Exclude()
-  @Column({ name: 'password_hash', type: 'varchar' })
-  passwordHash: string;
+  @Column({ name: 'password_hash', type: 'varchar', nullable: true })
+  passwordHash: string | null;
 
   @Exclude()
   @Column({ name: 'pin_hash', type: 'varchar', nullable: true })
@@ -68,7 +69,21 @@ export class User {
   @Column({ name: 'phone_verified', default: false })
   phoneVerified: boolean;
 
-  // Stellar custodial wallet
+  // Waitlist/Referral fields
+  @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
+  referralCode: string | null;
+
+  @Column({ name: 'referred_by', type: 'varchar', nullable: true })
+  referredBy: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  points: number;
+
+  @Column({ name: 'is_flagged', default: false })
+  isFlagged: boolean;
+
+  @Column({ name: 'ip_address', type: 'varchar', nullable: true })
+  ipAddress: string | null;
   @Column({ name: 'stellar_public_key', type: 'varchar', nullable: true, unique: true })
   stellarPublicKey: string | null;
 
@@ -90,4 +105,7 @@ export class User {
 
   @OneToMany(() => Transaction, (tx) => tx.user)
   transactions: Transaction[];
+
+  @OneToMany(() => ShareEvent, (share) => share.user)
+  shareEvents: ShareEvent[];
 }

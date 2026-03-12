@@ -53,28 +53,75 @@ export class AuthService {
 
   // ── Signup ────────────────────────────────────────────────
   async signup(dto: SignupDto): Promise<{ userId: string; email: string }> {
-    // Check uniqueness
-    const exists = await this.userRepo.findOne({
-      where: [
-        { email: dto.email },
-        { phone: dto.phone },
-        { username: dto.username },
-      ],
+    // Check if user already exists from waitlist
+    const existingUser = await this.userRepo.findOne({
+      where: { email: dto.email },
     });
-    if (exists) {
-      if (exists.email === dto.email)
+
+    if (existingUser) {
+      if (existingUser.emailVerified) {
         throw new ConflictException('Email already registered');
-      if (exists.phone === dto.phone)
-        throw new ConflictException('Phone already registered');
-      if (exists.username === dto.username)
-        throw new ConflictException('Username taken');
+      }
+      // User exists from waitlist, check username match
+      if (existingUser.username !== dto.username) {
+        throw new ConflictException('Username does not match waitlist reservation');
+      }
+      // Update the existing user
+      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      await this.userRepo.update(existingUser.id, {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        passwordHash,
+        emailVerified: false, // will be verified later
+      });
+      const user = await this.userRepo.findOne({ where: { id: existingUser.id } });
+      if (!user) throw new Error('User not found after update');
+      // Create Stellar wallet if not exists
+      if (!user.stellarPublicKey) {
+        try {
+          const wallet = await this.stellarService.createWallet();
+          await this.stellarService.ensureTrustline(wallet.secretKeyEnc);
+          user.stellarPublicKey = wallet.publicKey;
+          user.stellarSecretEnc = wallet.secretKeyEnc;
+          await this.userRepo.save(user);
+        } catch (err) {
+          this.logger.error(
+            `Stellar wallet creation failed: ${(err as Error).message}`,
+          );
+        }
+      }
+      // Register the device only if it doesn't exist
+      const existingDevice = await this.deviceRepo.findOne({
+        where: { deviceId: dto.deviceId },
+      });
+      if (!existingDevice) {
+        await this.deviceRepo.save(
+          this.deviceRepo.create({
+            userId: user.id,
+            deviceId: dto.deviceId,
+            publicKey: dto.devicePublicKey,
+            deviceName: 'Primary Device',
+          }),
+        );
+      }
+      // Send email verification OTP
+      const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
+        fullName: dto.fullName,
+      });
+      this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
+      return { userId: user.id, email: user.email };
     }
 
-    // If username is waitlist-reserved, enforce email match
-    await this.waitlistService.assertUsernameClaimAllowed(
-      dto.username,
-      dto.email,
-    );
+    // New user signup
+    const phoneExists = await this.userRepo.findOne({
+      where: { phone: dto.phone },
+    });
+    if (phoneExists) throw new ConflictException('Phone already registered');
+
+    const usernameExists = await this.userRepo.findOne({
+      where: { username: dto.username },
+    });
+    if (usernameExists) throw new ConflictException('Username taken');
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
@@ -101,9 +148,6 @@ export class AuthService {
     }
 
     await this.userRepo.save(user);
-
-    // Mark waitlist entry as converted (non-blocking)
-    this.waitlistService.markConverted(dto.email).catch(() => {});
 
     // Register the device
     await this.deviceRepo.save(
@@ -163,6 +207,7 @@ export class AuthService {
     if (!user.isActive) throw new ForbiddenException('Account suspended');
 
     // Verify password
+    if (!user.passwordHash) throw new UnauthorizedException('Invalid credentials');
     const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordOk) throw new UnauthorizedException('Invalid credentials');
 

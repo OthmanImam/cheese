@@ -1,78 +1,199 @@
-// src/waitlist/waitlist.controller.ts
 import {
-  Body,
   Controller,
+  Post,
   Get,
+  Body,
+  Param,
+  Query,
+  Req,
+  Res,
   HttpCode,
   HttpStatus,
-  Param,
-  Post,
-  Req,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import type { Request } from 'express';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+  ApiParam,
+  ApiResponse,
+} from '@nestjs/swagger';
+import type { Request, Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { WaitlistService } from './waitlist.service';
-import { JoinWaitlistDto } from './dto';
+import { CheckUsernameDto, RegisterDto, ShareDto } from './dto/waitlist.dto';
 
 @ApiTags('Waitlist')
+@UseGuards(ThrottlerGuard)
 @Controller('waitlist')
 export class WaitlistController {
   constructor(private readonly waitlistService: WaitlistService) {}
 
+  @Post('register')
   @Public()
-  @Post('join')
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Join the waitlist',
-    description:
-      'Reserves a username and email on the pre-launch waitlist. Sends a confirmation email immediately. If the username is already reserved by a different email, returns 409. Public endpoint — no auth required.',
+  @ApiOperation({ summary: 'Register for waitlist' })
+  @ApiBody({
+    type: RegisterDto,
+    examples: {
+      basic: {
+        value: {
+          email: 'user@example.com',
+          username: 'john_doe',
+        },
+      },
+      withReferral: {
+        value: {
+          email: 'user@example.com',
+          username: 'jane_smith',
+          referralCode: 'abc12345',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 201,
-    description: 'Waitlist entry created — confirmation email sent',
+    schema: {
+      example: {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        email: 'user@example.com',
+        username: 'john_doe',
+        referralCode: 'abc12345',
+        points: 0,
+      },
+    },
   })
-  @ApiResponse({
-    status: 409,
-    description: 'Email or username already on waitlist',
-  })
-  join(@Body() dto: JoinWaitlistDto, @Req() req: Request) {
-    const ip = (req.headers['x-forwarded-for'] as string) || req.ip;
-    return this.waitlistService.join(dto, ip);
+  register(@Body() dto: RegisterDto, @Req() req: Request) {
+    return this.waitlistService.register(dto, this.getIp(req));
   }
 
+  @Get('check-username')
   @Public()
-  @Get('check/:username')
-  @ApiOperation({
-    summary: 'Check username availability',
-    description:
-      'Checks whether a username is available across both existing users and the waitlist. Use for real-time availability feedback during waitlist signup. Public endpoint.',
-  })
-  @ApiParam({
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Check if username is available' })
+  @ApiQuery({
     name: 'username',
-    description: 'Username to check',
-    example: 'tunde_ok',
+    required: true,
+    description: 'Username to check (3-20 chars, alphanumeric + underscore)',
+    example: 'john_doe',
   })
   @ApiResponse({
     status: 200,
-    description: 'Returns { available: boolean, reservedByYou: boolean }',
+    schema: {
+      example: { available: true },
+    },
   })
-  checkUsername(@Param('username') username: string) {
-    return this.waitlistService.checkUsername(username);
+  checkUsername(@Query() q: CheckUsernameDto) {
+    return this.waitlistService.checkUsername(q.username);
   }
 
+  @Post('share')
   @Public()
-  @Get('stats')
-  @ApiOperation({
-    summary: 'Get waitlist stats',
-    description:
-      'Returns public stats for the landing page: total signups and estimated spots remaining. Public endpoint.',
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Track social share for bonus points' })
+  @ApiBody({
+    type: ShareDto,
+    examples: {
+      twitter: {
+        value: {
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          platform: 'twitter',
+        },
+      },
+      linkedin: {
+        value: {
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          platform: 'linkedin',
+        },
+      },
+      whatsapp: {
+        value: {
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+          platform: 'whatsapp',
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 200,
-    description: 'Returns { totalReservations: number, spotsLeft: number }',
+    schema: {
+      example: {
+        pointsAwarded: 10,
+        totalPoints: 15,
+        platform: 'twitter',
+      },
+    },
   })
-  getStats() {
-    return this.waitlistService.getStats();
+  trackShare(@Body() dto: ShareDto, @Req() req: Request) {
+    const userAgent = req.headers['user-agent'] || '';
+    return this.waitlistService.trackShare(dto, this.getIp(req), userAgent);
+  }
+
+  @Get('referral/:code')
+  @Public()
+  @ApiOperation({ summary: 'Get referral information by code' })
+  @ApiParam({
+    name: 'code',
+    description: 'Referral code (8 characters)',
+    example: 'abc12345',
+  })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: {
+        referrer: {
+          username: 'john_doe',
+          points: 100,
+        },
+        joinedCount: 5,
+      },
+    },
+  })
+  getReferralInfo(@Param('code') code: string) {
+    return this.waitlistService.getReferralInfo(code);
+  }
+
+  @Get('points/:userId')
+  @Public()
+  @ApiOperation({ summary: 'Get user points and rank' })
+  @ApiParam({
+    name: 'userId',
+    description: 'User UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: {
+        userId: '123e4567-e89b-12d3-a456-426614174000',
+        points: 150,
+        rank: 12,
+      },
+    },
+  })
+  getUserPoints(
+    @Param('userId') userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // Disable caching to ensure fresh points data
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+    return this.waitlistService.getUserPoints(userId);
+  }
+
+  private getIp(req: Request): string {
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+      const first = Array.isArray(xff) ? xff[0] : xff;
+      return first.split(',')[0].trim();
+    }
+    return req.socket?.remoteAddress || req.ip || 'unknown';
   }
 }

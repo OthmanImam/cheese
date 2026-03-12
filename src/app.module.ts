@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { BullModule } from '@nestjs/bullmq';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import {
@@ -36,6 +37,8 @@ import { ReferralModule } from './referral/referral.module';
 import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { PayLinkModule } from './paylink/paylink.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { AgentsModule } from './agents/agents.module';
 
 import { User } from './auth/entities/user.entity';
 import { RefreshToken } from './auth/entities/refresh-token.entity';
@@ -48,7 +51,8 @@ import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Notification } from './notifications/entities/notification.entity';
 import { EarnPosition } from './earn/entities/earn-position.entity';
 import { Referral } from './referral/entities/referral.entity';
-import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
+import { ShareEvent } from './waitlist/entities/share-event.entity';
+import { ReferralEvent } from './waitlist/entities/referral-event.entity';
 import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
@@ -77,39 +81,61 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
         },
       ],
     }),
+    // Only load BullModule if Redis is configured
+    ...(process.env.REDIS_HOST
+      ? [
+          BullModule.forRootAsync({
+            inject: [ConfigService],
+            useFactory: (config: ConfigService) => ({
+              connection: {
+                host: config.get('redis.host'),
+                port: config.get('redis.port', 6379),
+                password: config.get('redis.password'),
+              },
+            }),
+          }),
+        ]
+      : []),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: config.get('app.nodeEnv') === 'production' ? 'postgres' : 'sqlite',
-        host: config.get('db.host'),
-        port: config.get('db.port'),
-        username: config.get('db.user'),
-        password: config.get('db.password'),
-        database: config.get('app.nodeEnv') === 'production' 
-          ? config.get('db.name')
-          : (config.get('db.name') + '.db'),
-        entities: [
-          User,
-          RefreshToken,
-          Device,
-          Otp,
-          Transaction,
-          ExchangeRate,
-          // BankTransfer,
-          // VirtualCard,
-          // Notification,
-          // EarnPosition,
-          // Referral,
-          WaitlistEntry,
-          // PaymentRequest,
-        ],
-        synchronize: config.get('app.nodeEnv') !== 'production',
-        logging: config.get('app.nodeEnv') === 'development',
-        ssl:
-          config.get('app.nodeEnv') === 'production'
-            ? { rejectUnauthorized: false }
-            : false,
-      } as any),
+      useFactory: (config: ConfigService) => {
+        // choose postgres if DB_HOST or DATABASE_URL provided, otherwise fall back to sqlite
+        const usePostgres = !!config.get('db.host') || !!config.get('DATABASE_URL');
+        const type = usePostgres ? 'postgres' : 'sqlite';
+
+        return {
+          type,
+          host: config.get('db.host'),
+          port: config.get('db.port'),
+          username: config.get('db.user'),
+          password: config.get('db.password'),
+          database: usePostgres
+            ? config.get('db.name')
+            : (config.get('db.name') + '.db'),
+          entities: [
+            User,
+            RefreshToken,
+            Device,
+            Otp,
+            Transaction,
+            ExchangeRate,
+            // BankTransfer,
+            // VirtualCard,
+            // Notification,
+            // EarnPosition,
+            // Referral,
+            ShareEvent,
+            ReferralEvent,
+            // PaymentRequest,
+          ],
+          synchronize: config.get('app.nodeEnv') !== 'production',
+          logging: config.get('app.nodeEnv') === 'development',
+          ssl:
+            config.get('app.nodeEnv') === 'production'
+              ? { rejectUnauthorized: false }
+              : false,
+        } as any;
+      },
     }),
     // Phase 1
     AuthModule,
@@ -128,6 +154,8 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
     // EarnModule, ReferralModule,
     // Email + Waitlist + PayLink
     WaitlistModule,
+    LeaderboardModule,
+    AgentsModule,
     // EmailModule, PayLinkModule,
   ],
   providers: [

@@ -74,4 +74,77 @@ export class NotificationsService {
       deepLink: '/profile/devices',
     });
   }
+
+  // ── Waitlist notifications ────────────────────────────────
+
+  async notifyReferralJoined(referrerId: string, referredUsername: string) {
+    return this.create({
+      userId: referrerId,
+      type: NotificationType.REFERRAL_JOINED,
+      title: 'New Referral!',
+      body: `@${referredUsername} joined using your referral link. You earned 20 points!`,
+      deepLink: '/waitlist/points',
+    });
+  }
+
+  async notifyPointsAwarded(userId: string, points: number, reason: string) {
+    return this.create({
+      userId,
+      type: NotificationType.POINTS_AWARDED,
+      title: 'Points Awarded!',
+      body: `You earned ${points} points for ${reason}`,
+      deepLink: '/waitlist/points',
+    });
+  }
+
+  async notifyMilestoneReached(userId: string, milestone: string) {
+    return this.create({
+      userId,
+      type: NotificationType.MILESTONE_REACHED,
+      title: 'Milestone Unlocked!',
+      body: `Congratulations! You've reached: ${milestone}`,
+      deepLink: '/waitlist/leaderboard',
+    });
+  }
+
+  async notifyLaunchAnnouncement(userId: string, message: string) {
+    return this.create({
+      userId,
+      type: NotificationType.LAUNCH_ANNOUNCEMENT,
+      title: 'Launch Update',
+      body: message,
+      deepLink: '/waitlist',
+    });
+  }
+
+  async notifyLeaderboardUpdate(userId: string, newRank: number, oldRank: number) {
+    const direction = newRank < oldRank ? 'up' : 'down';
+    return this.create({
+      userId,
+      type: NotificationType.LEADERBOARD_UPDATE,
+      title: `Rank ${direction}!`,
+      body: `Your leaderboard position changed from #${oldRank} to #${newRank}`,
+      deepLink: '/waitlist/leaderboard',
+    });
+  }
+
+  async notifyAccountFlagged(userId: string, reason: string) {
+    return this.create({
+      userId,
+      type: NotificationType.SECURITY,
+      title: 'Account Flagged',
+      body: `Your account has been flagged: ${reason}. Please contact support.`,
+      deepLink: '/profile',
+    });
+  }
+
+  async notifyShareVerified(userId: string, platform: string, points: number) {
+    return this.create({
+      userId,
+      type: NotificationType.POINTS_AWARDED,
+      title: 'Share Verified!',
+      body: `Your ${platform} share was verified. You earned ${points} points!`,
+      deepLink: '/waitlist/points',
+    });
+  }
 }
