@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Loader2, Check, X, ChevronRight, Shield, Zap, Gift, type LucideIcon} from 'lucide-react';
+import { Loader2, Check, X, AlertCircle, ChevronRight, Shield, Zap, Gift, type LucideIcon} from 'lucide-react';
 import { registerWaitlist, checkUsername } from '@/lib/api';
 
 function useDebounce<T>(value: T, ms: number): T {
@@ -40,15 +40,37 @@ export function WaitlistForm() {
     staleTime: 10_000,
   });
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Username state:', {
+      rawUsername,
+      cleaned: username,
+      debounced: debouncedUsername,
+      availability,
+      checking,
+    });
+  }, [rawUsername, username, debouncedUsername, availability, checking]);
+
   const register = useMutation({
     mutationFn: registerWaitlist,
     onSuccess: (data) => {
-      sessionStorage.setItem('cheese_user', JSON.stringify(data.user));
-      sessionStorage.setItem('cheese_referral_link', data.referralLink);
-      router.push('/waitlist/confirmed');
+      try {
+        if (!data?.user) {
+          console.error('Invalid registration response:', data);
+          toast.error('Registration succeeded but response invalid');
+          return;
+        }
+        sessionStorage.setItem('cheese_user', JSON.stringify(data.user));
+        sessionStorage.setItem('cheese_referral_link', data.referralLink || '');
+        router.push('/waitlist/confirmed');
+      } catch (err: any) {
+        console.error('Error processing registration:', err);
+        toast.error(err?.message || 'Error processing registration');
+      }
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message;
+      console.error('Registration error:', err);
+      const msg = err?.response?.data?.message || err?.message;
       toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Something went wrong.');
     },
   });
@@ -69,6 +91,7 @@ export function WaitlistForm() {
     if (username.length < 3) return null;
     if (checking) return 'checking';
     if (!availability) return null;
+    if (availability.reason && availability.reason.includes('Invalid')) return 'error';
     return availability.available ? 'available' : 'taken';
   })();
 
@@ -124,6 +147,7 @@ export function WaitlistForm() {
                     style={{
                       borderColor: status === 'available' ? 'rgba(212,168,67,0.45)'
                                  : status === 'taken'     ? 'rgba(239,68,68,0.4)'
+                                 : status === 'error'     ? 'rgba(245,158,11,0.4)'
                                  : undefined,
                     }}
                   />
@@ -131,6 +155,7 @@ export function WaitlistForm() {
                     {status === 'checking'  && <Loader2 className="w-4 h-4 text-[#555] animate-spin" />}
                     {status === 'available' && <Check   className="w-4 h-4 text-[#d4a843]" />}
                     {status === 'taken'     && <X       className="w-4 h-4 text-red-400" />}
+                    {status === 'error'     && <AlertCircle className="w-4 h-4 text-amber-400" />}
                   </div>
                 </div>
 
@@ -141,6 +166,11 @@ export function WaitlistForm() {
                   {status === 'taken' && (
                     <p className="text-xs text-red-400 opacity-0 animate-fade-in">
                       {availability?.reason || `@${username} is already taken`}
+                    </p>
+                  )}
+                  {status === 'error' && (
+                    <p className="text-xs text-amber-400 opacity-0 animate-fade-in">
+                      {availability?.reason}
                     </p>
                   )}
                 </div>
