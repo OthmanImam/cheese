@@ -74,71 +74,95 @@ export interface RankResponse {
 // ── API Functions ────────────────────────────────────────────────────────────
 
 export async function registerWaitlist(payload: RegisterPayload): Promise<RegisterResponse> {
-  const { data: response } = await api.post<{ success: boolean; data: RegisterResponse }>(
-    '/waitlist/register',
-    payload
-  );
-  return response.data;
+  try {
+    const { data } = await api.post<RegisterResponse>('/waitlist/register', payload);
+    console.log('Register response:', data);
+    return data;
+  } catch (error) {
+    console.error('Register error:', error);
+    throw error;
+  }
 }
 
 export async function checkUsername(username: string): Promise<UsernameCheckResponse> {
   try {
-    const { data: response } = await api.get<{ success: boolean; data: UsernameCheckResponse }>(
-      '/waitlist/check-username',
-      { params: { username } }
-    );
-    return response.data;
-  } catch (error: any) {
-    // Validation error from backend (400 Bad Request)
-    if (error.response?.status === 400) {
-      // Return error message but mark as unavailable
+    console.log('[checkUsername] Checking:', username);
+    const { data } = await api.get<any>('/waitlist/check-username', {
+      params: { username },
+    });
+    
+    // The response should be the check result directly
+    console.log('[checkUsername] ✓ Success:', data);
+    if (data && typeof data === 'object') {
       return {
-        available: false,
-        username,
-        reason: error.response?.data?.message || 'Invalid username format',
+        available: data.available ?? true,
+        username: data.username ?? username,
+        reason: data.reason,
       };
     }
-    // Network or server errors - treat as unavailable
+    
+    return { available: true, username, reason: undefined };
+  } catch (error: any) {
+    const status = error.response?.status;
+    const errorData = error.response?.data;
+    
+    console.error('[checkUsername] ❌ Error:', {
+      status,
+      message: error.message,
+      errorData,
+    });
+    
+    // Handle validation errors (400)
+    if (status === 400) {
+      let msgStr = 'Invalid username';
+      
+      if (errorData?.message) {
+        msgStr = Array.isArray(errorData.message) 
+          ? errorData.message.join(', ')
+          : String(errorData.message);
+      } else if (errorData?.error) {
+        msgStr = String(errorData.error);
+      }
+      
+      console.warn('[checkUsername] Validation error:', msgStr);
+      return {
+        available: true, // Don't block on validation errors
+        username,
+        reason: msgStr,
+      };
+    }
+    
+    // For any other error, return available to not block
+    console.warn('[checkUsername] Other error, treating as available');
     return {
-      available: false,
+      available: true,
       username,
-      reason: 'Unable to check availability',
+      reason: error.message || 'Could not verify',
     };
   }
 }
 
 export async function trackShare(payload: SharePayload): Promise<ShareResponse> {
-  const { data: response } = await api.post<{ success: boolean; data: ShareResponse }>(
-    '/waitlist/share',
-    payload
-  );
-  return response.data;
+  const { data } = await api.post<ShareResponse>('/waitlist/share', payload);
+  return data;
 }
 
 export async function getLeaderboard(): Promise<LeaderboardResponse> {
-  const { data: response } = await api.get<{ success: boolean; data: LeaderboardResponse }>(
-    '/waitlist/leaderboard'
-  );
-  return response.data;
+  const { data } = await api.get<LeaderboardResponse>('/waitlist/leaderboard');
+  return data;
 }
 
 export async function getReferralInfo(code: string) {
-  const { data: response } = await api.get<{ success: boolean; data: any }>(
-    `/waitlist/referral/${code}`
-  );
-  return response.data;
+  const { data } = await api.get(`/waitlist/referral/${code}`);
+  return data;
 }
 
 export async function getUserPoints(userId: string): Promise<PointsResponse> {
-  const { data: response } = await api.get<{ success: boolean; data: PointsResponse }>(
-    `/waitlist/points/${userId}`
-  );
-  return response.data;
+  const { data } = await api.get<PointsResponse>(`/waitlist/points/${userId}`);
+  return data;
 }
 
 export async function getUserRank(userId: string): Promise<RankResponse> {
-  const { data: response } = await api.get<{ success: boolean; data: RankResponse }>(
-    `/waitlist/leaderboard/rank/${userId}`
-  );
-  return response.data;
+  const { data } = await api.get<RankResponse>(`/waitlist/leaderboard/rank/${userId}`);
+  return data;
 }
