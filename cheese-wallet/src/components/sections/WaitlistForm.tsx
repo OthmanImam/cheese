@@ -57,7 +57,10 @@ export function WaitlistForm() {
     e.preventDefault();
     if (!email) { toast.error('Please enter your email'); return; }
     if (username.length < 3) { toast.error('Username must be at least 3 characters'); return; }
-    if (availability && !availability.available) { toast.error('That username is taken'); return; }
+    if (availability && !availability.available) { 
+      toast.error(availability.reason || 'That username is not available'); 
+      return; 
+    }
 
     register.mutate({ email: email.toLowerCase().trim(), username, referralCode: refCode || undefined });
   };
@@ -136,7 +139,9 @@ export function WaitlistForm() {
                     <p className="text-xs text-[#d4a843] opacity-0 animate-fade-in">✓ @{username} is available</p>
                   )}
                   {status === 'taken' && (
-                    <p className="text-xs text-red-400 opacity-0 animate-fade-in">@{username} is already taken</p>
+                    <p className="text-xs text-red-400 opacity-0 animate-fade-in">
+                      {availability?.reason || `@${username} is already taken`}
+                    </p>
                   )}
                 </div>
               </div>

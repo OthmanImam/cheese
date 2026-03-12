@@ -17,8 +17,9 @@ import { ReferralEvent, REFERRAL_POINTS } from './entities/referral-event.entity
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto, ShareDto } from './dto/waitlist.dto';
-import { WaitlistEntry } from './entities/waitlist-entry.entity';
+import { WaitlistEntry, WaitlistStatus } from './entities/waitlist-entry.entity';
 import { Cron } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 
 const RESERVED_USERNAMES = new Set([
   'admin', 'cheese', 'support', 'help', 'api', 'www', 'app',
@@ -45,9 +46,13 @@ export class WaitlistService {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly config: ConfigService,
+    @InjectRepository(WaitlistEntry)
+    private readonly entryRepo: Repository<WaitlistEntry>,
     @Optional()
     @InjectQueue('share-tracking')
     private readonly shareQueue?: Queue,
+
     @Optional()
     @InjectQueue('fraud-detection')
     private readonly fraudQueue?: Queue,
@@ -252,6 +257,30 @@ export class WaitlistService {
     return this.entryRepo.findOne({ where: { email } });
   }
 
+  /**
+   * Return a small summary of a user's current point totals, along with
+   * share/referral counts and a timestamp for cache invalidation.
+   */
+  async getUserPoints(userId: string): Promise<{
+    points: number;
+    shareCount: number;
+    referralCount: number;
+    timestamp: string;
+  }> {
+    const user = await this.userRepo.findOne({ where: { id: userId }, select: ['points'] });
+    if (!user) throw new NotFoundException('User not found');
+
+    const shareCount = await this.shareRepo.count({ where: { userId, verified: true } });
+    const referralCount = await this.referralRepo.count({ where: { referrerId: userId } });
+
+    return {
+      points: user.points,
+      shareCount,
+      referralCount,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   // ────────────────────────────────────────────────────────
   // SCHEDULED: Send reminders to unconverted waitlist entries
   // Runs every day at 9 AM WAT (8 AM UTC)
@@ -269,18 +298,13 @@ export class WaitlistService {
     const entries = await this.entryRepo.find({
       where: { status: WaitlistStatus.PENDING },
     });
-    if (!user) throw new NotFoundException('User not found');
 
-    const shareCount = await this.shareRepo.count({ where: { userId, verified: true } });
-    const referralCount = await this.referralRepo.count({ where: { referrerId: userId } });
-
-    return { 
-      points: user.points, 
-      shareCount, 
-      referralCount,
-      // Add a timestamp to help with cache invalidation on the frontend
-      timestamp: new Date().toISOString(),
-    };
+    // iterate entries and send reminder emails or notifications as needed
+    for (const entry of entries) {
+      // placeholder just logs for now
+      this.logger.debug(`Reminding waitlist entry ${entry.email}`);
+      // actual reminder logic would use emailService/notificationsService
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
