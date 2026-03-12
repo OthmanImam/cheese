@@ -43,12 +43,23 @@ export function WaitlistForm() {
   const register = useMutation({
     mutationFn: registerWaitlist,
     onSuccess: (data) => {
-      sessionStorage.setItem('cheese_user', JSON.stringify(data.user));
-      sessionStorage.setItem('cheese_referral_link', data.referralLink);
-      router.push('/waitlist/confirmed');
+      try {
+        if (!data?.user) {
+          console.error('Invalid registration response:', data);
+          toast.error('Registration succeeded but response invalid');
+          return;
+        }
+        sessionStorage.setItem('cheese_user', JSON.stringify(data.user));
+        sessionStorage.setItem('cheese_referral_link', data.referralLink || '');
+        router.push('/waitlist/confirmed');
+      } catch (err: any) {
+        console.error('Error processing registration:', err);
+        toast.error(err?.message || 'Error processing registration');
+      }
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message;
+      console.error('Registration error:', err);
+      const msg = err?.response?.data?.message || err?.message;
       toast.error(Array.isArray(msg) ? msg.join(', ') : msg || 'Something went wrong.');
     },
   });

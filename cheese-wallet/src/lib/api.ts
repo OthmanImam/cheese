@@ -17,7 +17,7 @@ export interface RegisterPayload {
 }
 
 export interface RegisterResponse {
-  success: boolean;
+  success?: boolean;
   user: {
     id: string;
     email: string;
