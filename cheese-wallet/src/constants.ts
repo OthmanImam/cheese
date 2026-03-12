@@ -1,7 +1,8 @@
 // Minimal constants used by wallet hooks and other code
 
 // ── API Base URL ──────────────────────────────────────────
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+// Matches the NestJS backend's /v1 prefix
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1'
 
 // ── Query Keys for React Query ────────────────────────────
 export const QUERY_KEYS: any = {
@@ -89,5 +90,12 @@ export const ENDPOINTS: any = {
     PAY: (token: string) => `/paylink/${token}/pay`,
     MY: '/paylink/my',
     CANCEL: (token: string) => `/paylink/${token}/cancel`,
+  },
+  WAITLIST: {
+    REGISTER: '/waitlist/register',
+    LEADERBOARD: '/waitlist/leaderboard',
+    CHECK_USERNAME: (username: string) => `/waitlist/check-username/${username}`,
+    SHARE: '/waitlist/share',
+    REFERRAL: '/waitlist/referral',
   },
 };
