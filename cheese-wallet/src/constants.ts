@@ -1,4 +1,9 @@
 // Minimal constants used by wallet hooks and other code
+
+// ── API Base URL ──────────────────────────────────────────
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+
+// ── Query Keys for React Query ────────────────────────────
 export const QUERY_KEYS: any = {
   BALANCE: ['balance'],
   ADDRESS: ['address'],
@@ -17,6 +22,7 @@ export const QUERY_KEYS: any = {
   PAYLINK_TOKEN: (t: string) => ['paylink_token', t],
 };
 
+// ── Stale Times ───────────────────────────────────────────
 export const STALE_TIMES: any = {
   BALANCE: 0,
   BANKS: 0,
@@ -26,20 +32,62 @@ export const STALE_TIMES: any = {
   CARD: 0,
 };
 
+// ── API Endpoints ────────────────────────────────────────
 export const ENDPOINTS: any = {
   AUTH: {
-    LOGIN: '',
-    SIGNUP: '',
-    VERIFY_OTP: '',
-    RESEND_OTP: '',
-    ME: '',
-    FORGOT_PASSWORD: '',
-    RESET_PASSWORD: '',
-    VERIFY_PIN: '',
-    CHANGE_PIN: '',
-    LOGOUT: '',
+    LOGIN: '/auth/login',
+    SIGNUP: '/auth/signup',
+    VERIFY_OTP: '/auth/verify-otp',
+    RESEND_OTP: '/auth/resend-otp',
+    ME: '/auth/me',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
+    VERIFY_PIN: '/auth/verify-pin',
+    CHANGE_PIN: '/auth/change-pin',
+    LOGOUT: '/auth/logout',
   },
   DEVICE: {
-    REGISTER: '',
+    REGISTER: '/devices/register',
+  },
+  WALLET: {
+    BALANCE: '/wallet/balance',
+    ADDRESS: '/wallet/address',
+    DEPOSIT_NETWORKS: '/wallet/deposit-networks',
+  },
+  TRANSACTIONS: {
+    LIST: '/transactions',
+    BY_ID: (id: string) => `/transactions/${id}`,
+  },
+  SEND: {
+    RESOLVE_USERNAME: (username: string) => `/send/resolve/${username}`,
+    TO_USERNAME: '/send/to-username',
+    TO_ADDRESS: '/send/to-address',
+  },
+  BANK: {
+    LIST: '/banks',
+    RESOLVE: '/banks/resolve',
+    TRANSFER: '/banks/transfer',
+  },
+  CARD: {
+    LIST: '/cards',
+    CREATE: '/cards/create',
+    DETAILS: (id: string) => `/cards/${id}`,
+  },
+  EARN: {
+    BALANCE: '/earn/balance',
+  },
+  REFERRAL: {
+    INFO: '/referral/info',
+  },
+  NOTIFICATIONS: {
+    LIST: '/notifications',
+    MARK_READ: '/notifications/mark-read',
+  },
+  PAYLINK: {
+    CREATE: '/paylink/create',
+    RESOLVE: (token: string) => `/paylink/${token}`,
+    PAY: (token: string) => `/paylink/${token}/pay`,
+    MY: '/paylink/my',
+    CANCEL: (token: string) => `/paylink/${token}/cancel`,
   },
 };

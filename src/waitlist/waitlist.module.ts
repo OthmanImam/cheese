@@ -8,13 +8,14 @@ import { FraudProcessor } from './fraud.processor';
 import { User } from '../auth/entities/user.entity';
 import { ShareEvent } from './entities/share-event.entity';
 import { ReferralEvent } from './entities/referral-event.entity';
+import { WaitlistEntry } from './entities/waitlist-entry.entity';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentsModule } from '../agents/agents.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, ShareEvent, ReferralEvent]),
+    TypeOrmModule.forFeature([User, ShareEvent, ReferralEvent, WaitlistEntry]),
     // Only register queues if Redis is available
     ...(process.env.REDIS_HOST
       ? [
