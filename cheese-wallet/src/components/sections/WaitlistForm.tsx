@@ -153,7 +153,7 @@ export function WaitlistForm() {
                   />
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
                     {status === 'checking'  && <Loader2 className="w-4 h-4 text-[#555] animate-spin" />}
-                    {status === 'available' && <Check   className="w-4 h-4 text-[#d4a843]" />}
+                    {status === 'available' && <Check   className="w-4 h-4 text-[#00FF00]" />}
                     {status === 'taken'     && <X       className="w-4 h-4 text-red-400" />}
                     {status === 'error'     && <AlertCircle className="w-4 h-4 text-amber-400" />}
                   </div>
@@ -161,7 +161,7 @@ export function WaitlistForm() {
 
                 <div className="h-5 mt-1.5">
                   {status === 'available' && (
-                    <p className="text-xs text-[#d4a843] opacity-0 animate-fade-in">✓ @{username} is available</p>
+                    <p className="text-xs text-[#00FF00] opacity-0 animate-fade-in">✓ @{username} is available</p>
                   )}
                   {status === 'taken' && (
                     <p className="text-xs text-red-400 opacity-0 animate-fade-in">

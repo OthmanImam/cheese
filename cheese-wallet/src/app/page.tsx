@@ -9,6 +9,7 @@
  * 2. Or check git history for the full page code
  */
 
+
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { HeroSection } from '@/components/sections/HeroSection'
@@ -16,11 +17,6 @@ import { WaitlistForm } from '@/components/sections/WaitlistForm'
 import { FeaturesSection } from '@/components/sections/FeaturesSection'
 import { LeaderboardPreview } from '@/components/sections/LeaderboardPreview'
 import { Footer } from '@/components/sections/Footer'
-
-// export const metadata: Metadata = {
-//   title: 'Cheese Wallet — Dollar Wallet for Smart Nigerians',
-//   description: 'Hold your money in US dollars. Send and receive Naira instantly. Earn yield on your balance. Built for Nigeria.',
-// }
 
 function FormSkeleton() {
   return (
@@ -38,14 +34,18 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <Suspense fallback={<FormSkeleton />}>
-        <WaitlistForm />
-      </Suspense>
+      <div className="flex flex-col lg:flex-row items-start gap-8 px-6 pb-24 max-w-7xl mx-auto">
+        <div className="flex-1 w-full">
+          <Suspense fallback={<FormSkeleton />}>
+            <WaitlistForm />
+          </Suspense>
+        </div>
+        <div className="flex-1 w-full">
+          <LeaderboardPreview />
+        </div>
+      </div>
       <FeaturesSection />
-      <LeaderboardPreview />
       <Footer />
     </>
   )
 }
-
-
