@@ -2,7 +2,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectRepository }                      from '@nestjs/typeorm'
 import { Repository }                            from 'typeorm'
-import { BlockchainService }                     from '../blockchain/services/blockchain.service'
+import { BlockchainService }                     from '../blockchain/blockchain.service'
 import { RatesService }                          from '../rates/rates.service'
 import { TransactionsService }                   from '../transactions/transactions.service'
 import { User }                                  from '../auth/entities/user.entity'
@@ -40,11 +40,6 @@ export class WalletService {
     private readonly txService:         TransactionsService,
   ) {}
 
-  // ===========================================================================
-  // GET /wallet/balance
-  // Aggregates Stellar contract balance + EVM balance in parallel.
-  // ===========================================================================
-
   async getBalance(userId: string): Promise<WalletBalance> {
     const user = await this.userRepo.findOne({ where: { id: userId } })
     if (!user) throw new NotFoundException('User not found')
@@ -76,10 +71,6 @@ export class WalletService {
     }
   }
 
-  // ===========================================================================
-  // GET /wallet/address
-  // ===========================================================================
-
   async getAddress(userId: string): Promise<DepositAddress> {
     const user = await this.userRepo.findOne({ where: { id: userId } })
     if (!user?.stellarPublicKey) throw new NotFoundException('Wallet not initialised')
@@ -92,10 +83,6 @@ export class WalletService {
       memo:           null,
     }
   }
-
-  // ===========================================================================
-  // GET /wallet/deposit-networks
-  // ===========================================================================
 
   getDepositNetworks() {
     return [
@@ -122,11 +109,6 @@ export class WalletService {
     ]
   }
 
-  // ===========================================================================
-  // REGISTER ON-CHAIN
-  // Called by AuthService immediately at signup — no KYC required.
-  // ===========================================================================
-
   async registerOnChain(user: User): Promise<void> {
     if (!user.stellarPublicKey) return
     try {
@@ -136,15 +118,9 @@ export class WalletService {
       )
       this.logger.log(`On-chain registration: @${user.username} — ${txHash}`)
     } catch (err) {
-      // Log but never block signup
       this.logger.error(`On-chain registration failed for @${user.username}: ${err.message}`)
     }
   }
-
-  // ===========================================================================
-  // DEPOSIT CREDIT
-  // Called when Horizon streaming detects an inbound USDC payment.
-  // ===========================================================================
 
   async creditDepositByUsername(
     username:   string,
@@ -210,10 +186,6 @@ export class WalletService {
     this.logger.log(`Deposit credited by address: @${user.username} +$${amountUsdc} — ${txHash}`)
   }
 
-  // ===========================================================================
-  // WITHDRAW
-  // ===========================================================================
-
   async withdraw(
     userId:     string,
     amountUsdc: string,
@@ -238,10 +210,8 @@ export class WalletService {
     })
 
     try {
-      // 1. Debit contract balance
       await this.blockchainService.contractWithdraw(username, amountUsdc, toAddress)
 
-      // 2. Send actual USDC on-chain
       const user = await this.userRepo.findOne({ where: { id: userId } })
       if (!user?.stellarSecretEnc) throw new Error('Custodial key not found')
 
@@ -249,7 +219,7 @@ export class WalletService {
         fromSecretEnc: user.stellarSecretEnc,
         toAddress,
         amountUsdc,
-        memo: reference,
+        memo:          reference,
       })
 
       await this.txService.update(tx.id, { status: TxStatus.COMPLETED, txHash })
