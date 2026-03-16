@@ -61,7 +61,7 @@ export function LeaderboardPreview() {
       </Link>
 <button
   onClick={() => setShowShare(true)}
-  className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] rounded-xl transition-colors mb-3"
+  className="flex items-center justify-center gap-2 w-full py-3.5 text-sm mt-8 font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] rounded-xl transition-colors mb-3"
 >
   <Zap className="w-4 h-4" />
   Share to Earn More Points
