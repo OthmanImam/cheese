@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
 import { EmailModule } from '../email/email.module';
-import { StellarModule } from '../stellar/stellar.module';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesModule } from '../rates/rates.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -15,7 +15,7 @@ import { PayLinkService } from './paylink.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([PaymentRequest, User, Device]),
-    StellarModule,
+    BlockchainService,
     RatesModule,
     TransactionsModule,
     EmailModule,
