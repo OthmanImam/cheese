@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';
 import { getLeaderboard } from '@/lib/api';
+import { useState } from 'react';
+import { ShareModal } from '@/components/sections/ShareModal';
 
 export function LeaderboardPreview() {
   const { data, isLoading } = useQuery({
@@ -11,6 +13,8 @@ export function LeaderboardPreview() {
     queryFn: getLeaderboard,
     refetchInterval: 30_000,
   });
+
+  const [showShare, setShowShare] = useState(false);
 
   const top5 = data?.entries?.slice(0, 5) || [];
 
@@ -55,6 +59,16 @@ export function LeaderboardPreview() {
       >
         View full leaderboard →
       </Link>
+<button
+  onClick={() => setShowShare(true)}
+  className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] rounded-xl transition-colors mb-3"
+>
+  <Zap className="w-4 h-4" />
+  Share to Earn Points
+</button>
+
+{showShare && <ShareModal onClose={() => setShowShare(false)} />}
+
     </section>
   );
 }
