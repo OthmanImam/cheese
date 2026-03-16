@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Trophy } from 'lucide-react';
+import { Trophy, Zap } from 'lucide-react';
 import { getLeaderboard } from '@/lib/api';
 import { useState } from 'react';
 import { ShareModal } from '@/components/sections/ShareModal';
