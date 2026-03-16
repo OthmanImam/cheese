@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 import { Trophy, Users, ArrowLeft, Zap } from 'lucide-react';
+import { ShareModal } from '@/components/sections/ShareModal';
 import Link from 'next/link';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 
@@ -26,6 +27,8 @@ export default function LeaderboardPage() {
     queryFn: getLeaderboard,
     refetchInterval: 30_000,
   });
+
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     if (data) { setEntries(data.entries); setTotal(data.total); }
@@ -79,6 +82,16 @@ export default function LeaderboardPage() {
             </div> */}
           </div>
         </div>
+
+        <button
+  onClick={() => setShowShare(true)}
+  className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] rounded-xl transition-colors mb-8 opacity-0 animate-fade-up delay-100"
+>
+  <Zap className="w-4 h-4" />
+  Share to Earn Points
+</button>
+
+{showShare && <ShareModal onClose={() => setShowShare(false)} />}
 
         {/* Table */}
         <div className="bg-[#111] border border-white/[0.06] rounded-2xl overflow-hidden opacity-0 animate-fade-up delay-100">

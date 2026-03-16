@@ -64,7 +64,7 @@ export function LeaderboardPreview() {
   className="flex items-center justify-center gap-2 w-full py-3.5 text-sm font-semibold text-[#0a0a0a] bg-[#d4a843] hover:bg-[#c49535] rounded-xl transition-colors mb-3"
 >
   <Zap className="w-4 h-4" />
-  Share to Earn Points
+  Share to Earn More Points
 </button>
 
 {showShare && <ShareModal onClose={() => setShowShare(false)} />}
