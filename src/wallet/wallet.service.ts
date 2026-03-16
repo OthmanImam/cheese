@@ -2,7 +2,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectRepository }                      from '@nestjs/typeorm'
 import { Repository }                            from 'typeorm'
-import { BlockchainService }                     from '../blockchain/blockchain.service'
+import { BlockchainService }                     from '../blockchain/services/blockchain.service'
 import { RatesService }                          from '../rates/rates.service'
 import { TransactionsService }                   from '../transactions/transactions.service'
 import { User }                                  from '../auth/entities/user.entity'
