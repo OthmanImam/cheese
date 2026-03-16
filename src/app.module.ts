@@ -14,7 +14,7 @@ import {
   otpConfig,
   ratesConfig,
   redisConfig,
-  stellarConfig,
+  blockchainConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -27,7 +27,7 @@ import { RatesModule } from './rates/rates.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { SendModule } from './send/send.module';
 import { OtpModule } from './otp/otp.module';
-import { StellarModule } from './stellar/stellar.module';
+import { BlockchainModule } from './blockchain/blockchain.module';
 import { BanksModule } from './banks/banks.module';
 import { CardsModule } from './cards/cards.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -64,7 +64,7 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
         dbConfig,
         jwtConfig,
         redisConfig,
-        stellarConfig,
+        blockchainConfig,
         otpConfig,
         ratesConfig,
       ],
@@ -139,7 +139,7 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
     }),
     // Phase 1
     AuthModule,
-    DevicesModule, OtpModule, StellarModule,
+    DevicesModule, OtpModule, BlockchainModule,
     // Phase 2
     WalletModule, RatesModule, TransactionsModule,
     // Phase 3
