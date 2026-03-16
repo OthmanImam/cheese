@@ -13,7 +13,7 @@ import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
-import { StellarService } from '../stellar/stellar.service';
+import { BlockchainService } from './../blockchain/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
@@ -265,7 +265,7 @@ export class BanksService {
     @InjectRepository(BankTransfer)
     private readonly transferRepo: Repository<BankTransfer>,
     private readonly config: ConfigService,
-    private readonly stellarService: StellarService,
+    private readonly BlockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
   ) {}
@@ -356,7 +356,7 @@ export class BanksService {
     const feeUsdc = (TRANSFER_FEE_NGN / effectiveRate).toFixed(6);
 
     // 6. Check USDC balance
-    const balance = await this.stellarService.getUsdcBalance(
+    const balance = await this.BlockchainService.getUsdcBalance(
       user.stellarPublicKey,
     );
     if (parseFloat(balance.usdc) < parseFloat(amountUsdc)) {
@@ -407,7 +407,7 @@ export class BanksService {
         'stellar.platformWalletAddress',
       );
       if (platformWallet) {
-        const txHash = await this.stellarService.sendUsdc({
+        const txHash = await this.BlockchainService.sendUsdc({
           fromSecretEnc: user.stellarSecretEnc,
           toAddress: platformWallet,
           amountUsdc,

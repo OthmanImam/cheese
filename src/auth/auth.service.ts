@@ -16,7 +16,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
 import { OtpType } from '../otp/entities/otp.entity';
-import { StellarService } from '../stellar/stellar.service';
+import { BlockchainService } from '../blockchain/blockchain.service';
 import { Device } from '../devices/entities/device.entity';
 import {
   ChangePinDto,
@@ -46,7 +46,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
-    private readonly stellarService: StellarService,
+    private readonly blockchainService: BlockchainService,
     private readonly emailService: EmailService,
     private readonly waitlistService: WaitlistService,
   ) {}
@@ -79,8 +79,8 @@ export class AuthService {
       // Create Stellar wallet if not exists
       if (!user.stellarPublicKey) {
         try {
-          const wallet = await this.stellarService.createWallet();
-          await this.stellarService.ensureTrustline(wallet.secretKeyEnc);
+          const wallet = await this.BlockchainService.createWallet();
+          await this.BlockchainService.ensureTrustline(wallet.secretKeyEnc);
           user.stellarPublicKey = wallet.publicKey;
           user.stellarSecretEnc = wallet.secretKeyEnc;
           await this.userRepo.save(user);
@@ -136,8 +136,8 @@ export class AuthService {
 
     // Create Stellar custodial wallet
     try {
-      const wallet = await this.stellarService.createWallet();
-      await this.stellarService.ensureTrustline(wallet.secretKeyEnc);
+      const wallet = await this.BlockchainService.createWallet();
+      await this.BlockchainService.ensureTrustline(wallet.secretKeyEnc);
       user.stellarPublicKey = wallet.publicKey;
       user.stellarSecretEnc = wallet.secretKeyEnc;
     } catch (err) {
@@ -217,7 +217,7 @@ export class AuthService {
     });
     if (!device) throw new UnauthorizedException('Device not registered');
 
-    const signatureValid = this.stellarService.verifyDeviceSignature({
+    const signatureValid = this.BlockchainService.verifyDeviceSignature({
       publicKey: device.publicKey,
       signature: dto.deviceSignature,
       message: dto.deviceId, // client signs their own deviceId
