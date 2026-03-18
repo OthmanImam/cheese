@@ -45,7 +45,7 @@ export class BlockchainWallet {
    * Set to non-null exactly once, when the WalletCreated event is parsed.
    * Never changes after that.
    */
-  @Column({ type: 'varchar', length: 100, nullable: true, default: null })
+  @Column({ type: 'varchar', length: 100, nullable: true, default: null, name: 'wallet_address' })
   walletAddress: string | null;
 
   /**

@@ -14,7 +14,7 @@ import {
   otpConfig,
   ratesConfig,
   redisConfig,
-  blockchainConfig,
+  emailConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -32,7 +32,6 @@ import { BanksModule } from './banks/banks.module';
 import { CardsModule } from './cards/cards.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProfileModule } from './profile/profile.module';
-import { EarnModule } from './earn/earn.module';
 import { ReferralModule } from './referral/referral.module';
 import { EmailModule } from './email/email.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
@@ -49,11 +48,13 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
 import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Notification } from './notifications/entities/notification.entity';
-import { EarnPosition } from './earn/entities/earn-position.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { ShareEvent } from './waitlist/entities/share-event.entity';
 import { ReferralEvent } from './waitlist/entities/referral-event.entity';
+import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
 import { PaymentRequest } from './paylink/entities/payment-request.entity';
+import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity';
+import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
 
 @Module({
   imports: [
@@ -64,11 +65,11 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
         dbConfig,
         jwtConfig,
         redisConfig,
-        blockchainConfig,
         otpConfig,
         ratesConfig,
+        emailConfig,
       ],
-      // email config is registered inside emailConfig in app.config.ts
+      // email config now properly loaded
       envFilePath: ['.env'],
     }),
     ScheduleModule.forRoot(),
@@ -126,6 +127,9 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
             // Referral,
             ShareEvent,
             ReferralEvent,
+            WaitlistEntry,
+            BlockchainWallet,
+            BlockchainTransaction,
             // PaymentRequest,
           ],
           synchronize: config.get('app.nodeEnv') !== 'production',
@@ -153,10 +157,11 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
     // Phase 7
     // EarnModule, ReferralModule,
     // Email + Waitlist + PayLink
+    EmailModule,
     WaitlistModule,
     LeaderboardModule,
     AgentsModule,
-    // EmailModule, PayLinkModule,
+    // PayLinkModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAccessGuard },

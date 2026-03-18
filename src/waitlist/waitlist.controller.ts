@@ -58,11 +58,15 @@ export class WaitlistController {
     status: 201,
     schema: {
       example: {
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        email: 'user@example.com',
-        username: 'john_doe',
-        referralCode: 'abc12345',
-        points: 0,
+        user: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          email: 'user@example.com',
+          username: 'john_doe',
+          referralCode: 'abc12345',
+          points: 0,
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+        referralLink: 'https://cheesepay.xyz/waitlist?ref=abc12345',
       },
     },
   })

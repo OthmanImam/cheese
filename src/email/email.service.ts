@@ -61,7 +61,7 @@ export class EmailService {
         to: payload.to,
         subject: payload.subject,
         html: payload.html,
-        reply_to: payload.replyTo || this.replyTo,
+        replyTo: payload.replyTo || this.replyTo,
       });
 
       if (error) {
@@ -81,11 +81,13 @@ export class EmailService {
     to: string;
     username: string;
     position?: number;
+    referralCode?: string;
   }): Promise<void> {
     const { subject, html } = waitlistConfirmation({
       email: params.to,
       username: params.username,
       position: params.position,
+      referralCode: params.referralCode,
     });
     await this.send({ to: params.to, subject, html });
   }

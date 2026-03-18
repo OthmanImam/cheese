@@ -356,7 +356,7 @@ export class BanksService {
     const feeUsdc = (TRANSFER_FEE_NGN / effectiveRate).toFixed(6);
 
     // 6. Check USDC balance
-    const { usdc } = await blockchainService.getStellarBalance(key);  
+    const balance = await this.BlockchainService.getStellarBalance(user.stellarPublicKey);  
     if (parseFloat(balance.usdc) < parseFloat(amountUsdc)) {
       throw new BadRequestException('Insufficient USDC balance');
     }

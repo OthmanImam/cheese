@@ -15,10 +15,12 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from './entities/user.entity';
 import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
+import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
+import { ReferralEvent } from '../waitlist/entities/referral-event.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken, Device]),
+    TypeOrmModule.forFeature([User, RefreshToken, Device, WaitlistEntry, ReferralEvent]),
     PassportModule,
     JwtModule.register({}), // secrets supplied per sign() call
     OtpModule,

@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
-import { StellarService } from '../stellar/stellar.service';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { EmailService } from '../email/email.service';
@@ -61,7 +61,7 @@ export class PayLinkService {
     private readonly prRepo: Repository<PaymentRequest>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Device) private readonly deviceRepo: Repository<Device>,
-    private readonly stellarService: StellarService,
+    private readonly stellarService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
     private readonly emailService: EmailService,

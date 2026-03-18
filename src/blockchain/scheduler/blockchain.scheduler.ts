@@ -25,7 +25,7 @@ export class BlockchainScheduler {
    * is logged for manual intervention. In production, wire this to PagerDuty
    * or Slack via your alerting infrastructure.
    */
-  @Cron(CronExpression.EVERY_2_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async retryPendingWallets(): Promise<void> {
     const pendingWallets = await this.walletService.findPendingWallets();
 
