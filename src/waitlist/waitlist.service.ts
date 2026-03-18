@@ -279,6 +279,16 @@ export class WaitlistService {
     };
   }
 
+  async getTotalRegisteredUsers(): Promise<number> {
+    return this.userRepo.count();
+  }
+
+  async getTotalReservedUsernames(): Promise<number> {
+    const count = await this.entryRepo.count();
+    this.logger.log(`Total reserved usernames: ${count}`);
+    return count;
+  }
+
   // ────────────────────────────────────────────────────────
   // SCHEDULED: Send reminders to unconverted waitlist entries
   // Runs every day at 9 AM WAT (8 AM UTC)

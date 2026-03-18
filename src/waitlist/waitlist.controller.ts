@@ -137,6 +137,19 @@ export class WaitlistController {
     return this.waitlistService.trackShare(dto, this.getIp(req), userAgent);
   }
 
+  @Get('count')
+  @Public()
+  @ApiOperation({ summary: 'Get total count of reserved usernames' })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: { count: 2847 },
+    },
+  })
+  getTotalReservedCount() {
+    return this.waitlistService.getTotalReservedUsernames();
+  }
+
   @Get('referral/:code')
   @Public()
   @ApiOperation({ summary: 'Get referral information by code' })
@@ -201,3 +214,4 @@ export class WaitlistController {
     return req.socket?.remoteAddress || req.ip || 'unknown';
   }
 }
+
