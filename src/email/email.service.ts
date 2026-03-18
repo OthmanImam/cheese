@@ -1,7 +1,7 @@
 // src/email/email.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import {
   waitlistConfirmation,
   appLaunch,
@@ -29,28 +29,25 @@ export class EmailService {
   private readonly from: string;
   private readonly fromName: string;
   private readonly replyTo: string;
-
-  // ZeptoMail REST endpoint
-  private readonly ZEPTO_URL = 'https://api.zeptomail.com/v1.1/email';
+  private readonly resend: Resend;
 
   constructor(private readonly config: ConfigService) {
-    this.apiKey = config.get<string>('email.zeptoApiKey', '');
-    this.from = config.get<string>(
-      'email.fromAddress',
-      'noreply@cheesewallet.app',
-    );
-    this.fromName = config.get<string>('email.fromName', 'Cheese Wallet');
-    this.replyTo = config.get<string>(
-      'email.replyTo',
-      'support@cheesewallet.app',
-    );
+    this.apiKey = config.get<string>('email.resendApiKey', '');
+    this.resend = new Resend(this.apiKey);
+    this.from = config.get<string>('email.fromAddress', 'hi@cheesepay.xyz');
+    this.fromName = config.get<string>('email.fromName', 'Cheese Pay');
+    this.replyTo = config.get<string>('email.replyTo', 'hi@cheesepay.xyz');
   }
 
-  private get frontendUrl() { return this.config.get<string>('app.frontendUrl', 'https://cheese.app'); }
+  private get frontendUrl() {
+    return this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+  }
 
   // ── Core send ─────────────────────────────────────────────
   private async send(payload: SendPayload): Promise<void> {
-    if (!this.apiKey) {
+    const apiKey = this.config.get<string>('email.resendApiKey', '');
+
+    if (!apiKey) {
       // Dev mode: log email to console instead of sending
       this.logger.warn(
         `[EMAIL — dev preview] To: ${payload.to} | Subject: ${payload.subject}`,
@@ -58,49 +55,18 @@ export class EmailService {
       return;
     }
 
-    const body = {
-      from: {
-        address: this.from,
-        name: this.fromName,
-      },
-      to: [
-        {
-          email_address: {
-            address: payload.to,
-            name: '',
-          },
-        },
-      ],
-      reply_to: [
-        {
-          address: payload.replyTo || this.replyTo,
-          name: this.fromName,
-        },
-      ],
-      subject: payload.subject,
-      htmlbody: payload.html,
-    };
-
     try {
-      const res = await fetch(this.ZEPTO_URL, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          Authorization: `Zoho-enczapikey ${this.apiKey}`,
-        },
-        body: JSON.stringify(body),
+      const { error } = await this.resend.emails.send({
+        from: `${this.fromName} <${this.from}>`,
+        to: payload.to,
+        subject: payload.subject,
+        html: payload.html,
+        reply_to: payload.replyTo || this.replyTo,
       });
 
-      if (!res.ok) {
-        const err = await res
-          .json()
-          .catch(() => ({ message: 'Unknown error' }));
-        this.logger.error(
-          `ZeptoMail send failed [${res.status}]: ${JSON.stringify(err)}`,
-        );
-        // Fail silently — don't crash the request
-        return;
+      if (error) {
+        this.logger.error(`Resend send failed: ${JSON.stringify(error)}`);
+        return; // Fail silently — don't crash the request
       }
 
       this.logger.log(`Email sent → ${payload.to} | "${payload.subject}"`);
