@@ -18,7 +18,7 @@ export function waitlistConfirmation(params: {
   email: string;
   position?: number;
 }): { subject: string; html: string } {
-  const subject = `@${params.username} is yours — Welcome to Cheese Wallet 🧀`;
+  const subject = `@${params.username} is yours — Welcome to Cheese Pay 🧀`;
   const html = baseLayout({
     preheader: `Your username @${params.username} has been reserved. You're among the first.`,
     body: `
@@ -42,7 +42,7 @@ export function waitlistConfirmation(params: {
         <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
           You've secured your spot before the world finds out. When Cheese Wallet launches,
-          your username will be waiting — reserved exclusively for you.
+          your username will be waiting. Reserved exclusively for you.
         </p>
 
         <!-- Username card -->
