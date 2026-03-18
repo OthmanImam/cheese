@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -135,19 +136,21 @@ export class LoginDto {
   @ApiProperty({
     example: 'base64-ecdsa-signature-here',
     description:
-      'ECDSA P-256 signature of SHA256(timestamp) in base64, proving device ownership',
+      'ECDSA P-256 signature of SHA256(timestamp) in base64, proving device ownership. Optional on first login before device is registered.',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  deviceSignature: string;
+  deviceSignature?: string;
 
   @ApiProperty({
     example: 'device-uuid-v4-here',
-    description: 'Device ID matching the registered public key',
+    description: 'Device ID matching the registered public key. Optional on first login before device is registered.',
+    required: false,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  deviceId: string;
+  deviceId?: string;
 }
 
 export class ForgotPasswordDto {

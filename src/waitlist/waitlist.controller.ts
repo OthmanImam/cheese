@@ -33,7 +33,7 @@ export class WaitlistController {
 
   @Post('register')
   @Public()
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register for waitlist' })
   @ApiBody({
@@ -58,11 +58,11 @@ export class WaitlistController {
     status: 201,
     schema: {
       example: {
+        success: true,
         id: '123e4567-e89b-12d3-a456-426614174000',
         email: 'user@example.com',
         username: 'john_doe',
         referralCode: 'abc12345',
-        points: 0,
       },
     },
   })

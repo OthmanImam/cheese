@@ -15,12 +15,15 @@ export interface ApiError {
   error?: string
 }
 
+export type Theme = 'light' | 'dark' | 'auto'
+
+export type TxStatus = 'pending' | 'confirmed' | 'failed'
+
 // ── Auth Types ────────────────────────────────────────────
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
+  fullName: string
   phone: string
   username: string
   profileImage?: string
@@ -41,27 +44,32 @@ export interface DeviceKey {
   createdAt: string
 }
 
+export type AuthScreen = 'splash' | 'login' | 'signup-1' | 'signup-2' | 'signup-3' | 'signup-otp' | 'device' | 'forgot-email' | 'forgot-otp' | 'pw-success' | 'new-password'
+
+export type AppScreen = 'home' | 'send' | 'cards' | 'cardscreen' | 'history' | 'profile' | 'notifications' | 'txdetail' | 'kyc' | 'security' | 'profile-edit' | 'earn' | 'support' | 'applock'
+
 export interface LoginPayload {
-  email: string
+  identifier: string
   password: string
-  deviceId: string
-  deviceSignature: string
+  deviceId?: string
+  deviceSignature?: string
 }
 
 export interface SignupPayload {
+  fullName: string
   email: string
+  phone: string
+  username: string
   password: string
-  firstName: string
-  lastName: string
   deviceId: string
-  deviceSignature: string
+  devicePublicKey: string
   referralCode?: string
 }
 
 export interface OtpVerifyPayload {
   email: string
   otp: string
-  type: 'email_verification' | 'password_reset' | 'login'
+  type: 'email_verify' | 'password_reset' | 'login_2fa'
 }
 
 export interface ResetPasswordPayload {
@@ -97,16 +105,24 @@ export interface DepositNetwork {
 // ── Transaction Types ─────────────────────────────────────
 export interface Transaction {
   id: string
-  type: 'deposit' | 'withdrawal' | 'send' | 'receive'
-  status: 'pending' | 'completed' | 'failed'
-  amount: string
-  amountUSD: string
-  currency: string
-  from?: string
-  to?: string
-  hash?: string
-  timestamp: string
-  description?: string
+  type: 'deposit' | 'withdrawal' | 'send_username' | 'send_address' | 'bank_transfer' | 'yield_credit' | 'referral_bonus' | 'card_payment' | 'fee' | 'pay_request'
+  status: 'pending' | 'completed' | 'failed' | 'reversed'
+  amountUsdc: string
+  amountNgn: string | null
+  feeUsdc: string
+  rateApplied: string | null
+  recipientUsername: string | null
+  recipientAddress: string | null
+  recipientName: string | null
+  bankName: string | null
+  accountNumber: string | null
+  txHash: string | null
+  network: string | null
+  reference: string
+  description: string | null
+  failureReason: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface TransactionListResponse {
@@ -140,9 +156,8 @@ export interface BankTransferPayload {
   bankCode: string
   accountNumber: string
   accountName: string
-  amount: string
-  amountUSD: string
-  narration?: string
+  amountNgn: string
+  amountUsdc: string
   pin: string
   deviceSignature: string
   deviceId: string
@@ -165,11 +180,14 @@ export interface VirtualCard {
   id: string
   cardNumber: string
   expiryDate: string
+  expiryMonth: string
+  expiryYear: string
   cvv: string
   holderName: string
   status: 'active' | 'inactive' | 'frozen'
   balance: string
   currency: string
+  last4: string
   createdAt: string
   limits: {
     daily: string
@@ -180,10 +198,12 @@ export interface VirtualCard {
 
 // ── Rates Types ───────────────────────────────────────────
 export interface ExchangeRate {
-  pair: string
-  rate: string
-  timestamp: string
+  id: string
+  usdToNgn: string
+  effectiveRate: string
+  spreadPercent: string
   source: string
+  fetchedAt: string
 }
 
 // ── Earn / Yield Types ────────────────────────────────────

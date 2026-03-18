@@ -15,6 +15,7 @@ import {
   ratesConfig,
   redisConfig,
   stellarConfig,
+  emailConfig,
 } from './config/app.config';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -53,6 +54,7 @@ import { EarnPosition } from './earn/entities/earn-position.entity';
 import { Referral } from './referral/entities/referral.entity';
 import { ShareEvent } from './waitlist/entities/share-event.entity';
 import { ReferralEvent } from './waitlist/entities/referral-event.entity';
+import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
 import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
@@ -67,6 +69,7 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
         stellarConfig,
         otpConfig,
         ratesConfig,
+        emailConfig,
       ],
       // email config is registered inside emailConfig in app.config.ts
       envFilePath: ['.env'],
@@ -126,6 +129,7 @@ import { PaymentRequest } from './paylink/entities/payment-request.entity';
             // Referral,
             ShareEvent,
             ReferralEvent,
+            WaitlistEntry,
             // PaymentRequest,
           ],
           synchronize: config.get('app.nodeEnv') !== 'production',

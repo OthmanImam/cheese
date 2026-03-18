@@ -30,19 +30,19 @@ export class EmailService {
   private readonly fromName: string;
   private readonly replyTo: string;
 
-  // ZeptoMail REST endpoint
-  private readonly ZEPTO_URL = 'https://api.zeptomail.com/v1.1/email';
+  // Resend REST endpoint
+  private readonly RESEND_URL = 'https://api.resend.com/emails';
 
   constructor(private readonly config: ConfigService) {
-    this.apiKey = config.get<string>('email.zeptoApiKey', '');
+    this.apiKey = config.get<string>('email.resendApiKey', '');
     this.from = config.get<string>(
       'email.fromAddress',
-      'noreply@cheesewallet.app',
+      'hi@cheesepay.xyz',
     );
-    this.fromName = config.get<string>('email.fromName', 'Cheese Wallet');
+    this.fromName = config.get<string>('email.fromName', 'ChPay');
     this.replyTo = config.get<string>(
       'email.replyTo',
-      'support@cheesewallet.app',
+      'hi@cheesepay.xyz',
     );
   }
 
@@ -59,35 +59,20 @@ export class EmailService {
     }
 
     const body = {
-      from: {
-        address: this.from,
-        name: this.fromName,
-      },
-      to: [
-        {
-          email_address: {
-            address: payload.to,
-            name: '',
-          },
-        },
-      ],
-      reply_to: [
-        {
-          address: payload.replyTo || this.replyTo,
-          name: this.fromName,
-        },
-      ],
+      from: `${this.fromName} <${this.from}>`,
+      to: [payload.to],
       subject: payload.subject,
-      htmlbody: payload.html,
+      html: payload.html,
+      reply_to: payload.replyTo || this.replyTo,
     };
 
     try {
-      const res = await fetch(this.ZEPTO_URL, {
+      const res = await fetch(this.RESEND_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: `Zoho-enczapikey ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify(body),
       });
@@ -97,13 +82,14 @@ export class EmailService {
           .json()
           .catch(() => ({ message: 'Unknown error' }));
         this.logger.error(
-          `ZeptoMail send failed [${res.status}]: ${JSON.stringify(err)}`,
+          `Resend send failed [${res.status}]: ${JSON.stringify(err)}`,
         );
         // Fail silently — don't crash the request
         return;
       }
 
-      this.logger.log(`Email sent → ${payload.to} | "${payload.subject}"`);
+      const responseData = await res.json().catch(() => ({}));
+      this.logger.log(`Email sent → ${payload.to} | "${payload.subject}" | ID: ${responseData.id || 'unknown'}`);
     } catch (err) {
       this.logger.error(`Email network error: ${err.message}`);
     }
@@ -355,6 +341,58 @@ export class EmailService {
 </body>
 </html>`;
     await this.send({ to: user.email, subject: '🧀 Your Cheese username is reserved', html });
+  }
+
+  async sendWaitlistConfirmationEmail(waitlistEntry: any): Promise<void> {
+    const link = `${this.frontendUrl || 'https://cheese.app'}/waitlist?ref=${waitlistEntry.referralCode}`;
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+      <tr>
+        <td style="padding:48px 48px 32px;background:#111111;border-radius:16px 16px 0 0;border-bottom:1px solid #1f1f1f;">
+          <p style="margin:0;font-size:24px;font-weight:700;color:#d4a843;">🧀 Cheese</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:40px 48px;background:#111111;">
+          <h1 style="margin:0 0 8px;font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px;">@${waitlistEntry.username} is reserved.</h1>
+          <p style="margin:0 0 32px;font-size:16px;color:#888;line-height:1.6;">Your Cheese username is officially reserved on our waitlist. No one else can take it.</p>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:24px 28px;margin-bottom:32px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">YOUR RESERVED USERNAME</p>
+            <p style="margin:0;font-size:28px;font-weight:800;color:#d4a843;">@${waitlistEntry.username}</p>
+          </div>
+          <p style="margin:0 0 16px;font-size:15px;color:#ccc;font-weight:600;">Move up the leaderboard 🏆</p>
+          <p style="margin:0 0 24px;font-size:14px;color:#888;line-height:1.6;">Share your link to earn points. Top spots get early access and exclusive perks.</p>
+          <a href="${link}" style="display:inline-block;background:#d4a843;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:700;">Share My Reservation →</a>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:16px 20px;margin-top:32px;">
+            <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">YOUR REFERRAL LINK</p>
+            <p style="margin:0;font-size:13px;color:#d4a843;word-break:break-all;">${link}</p>
+          </div>
+          <p style="margin:32px 0 0;font-size:13px;color:#555;line-height:1.7;">
+            Referrals earn <strong style="color:#d4a843;">20 pts</strong> each.
+            Twitter shares earn <strong style="color:#d4a843;">10 pts</strong>,
+            LinkedIn <strong style="color:#d4a843;">8 pts</strong>, and more.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 48px;background:#0d0d0d;border-radius:0 0 16px 16px;border-top:1px solid #1f1f1f;">
+          <p style="margin:0;font-size:12px;color:#444;line-height:1.6;">
+            You're receiving this because you joined the Cheese Wallet waitlist.<br>
+            © 2025 Cheese Wallet. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+    await this.send({ to: waitlistEntry.email, subject: '🧀 Your Cheese username is reserved', html });
   }
 
   async sendWaitlistReminder(params: {

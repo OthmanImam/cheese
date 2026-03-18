@@ -39,19 +39,25 @@ export class WaitlistEntry {
   @Column({ name: 'referral_source', type: 'varchar', nullable: true })
   referralSource: string | null;
 
+  @Column({ name: 'referral_code', type: 'varchar', nullable: true })
+  referralCode: string | null;
+
+  @Column({ name: 'referred_by', type: 'uuid', nullable: true })
+  referredBy: string | null;
+
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 
-  @Column({ name: 'notified_at', type: 'integer', transformer: {
-    from: (value: number) => value ? new Date(value) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({ name: 'notified_at', type: 'bigint', nullable: true, transformer: {
+    from: (value: string | number | null) => value ? new Date(Number(value)) : null,
+    to: (value: Date | null) => value ? value.getTime().toString() : null,
+  } })
   notifiedAt: Date | null;
 
-  @Column({ name: 'converted_at', type: 'integer', transformer: {
-    from: (value: number) => value ? new Date(value) : null,
-    to: (value: Date) => value ? value.getTime() : null,
-  }, nullable: true })
+  @Column({ name: 'converted_at', type: 'bigint', nullable: true, transformer: {
+    from: (value: string | number | null) => value ? new Date(Number(value)) : null,
+    to: (value: Date | null) => value ? value.getTime().toString() : null,
+  } })
   convertedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })

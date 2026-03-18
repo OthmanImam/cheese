@@ -67,96 +67,60 @@ export class WaitlistService {
       throw new ConflictException('This username is reserved');
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction('SERIALIZABLE');
+    // ── Check for conflicts BEFORE transaction ──────────────────────────────
+    const existingUser = await this.userRepo.findOne({ where: { email } });
+    if (existingUser) throw new ConflictException('This email is already registered');
 
-    try {
-      // Pessimistic write lock prevents race conditions on username
-      const takenUsername = await queryRunner.manager.findOne(User, {
-        where: { username },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (takenUsername) throw new ConflictException('This username is already taken');
+    // Use DataSource directly to avoid metadata issues
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    const existingWaitlist = await entryRepo.findOne({ where: { email } });
+    if (existingWaitlist) throw new ConflictException('This email is already on the waitlist');
 
-      const takenEmail = await queryRunner.manager.findOne(User, {
-        where: { email },
-      });
-      if (takenEmail) throw new ConflictException('This email is already registered');
+    const takenUsernameUser = await this.userRepo.findOne({ where: { username } });
+    if (takenUsernameUser) throw new ConflictException('This username is already taken');
 
-      let referrer: User | null = null;
-      if (referralCode) {
-        referrer = await queryRunner.manager.findOne(User, {
-          where: { referralCode },
-        });
-        // Silently ignore invalid referral codes — don't block registration
-      }
+    const takenUsernameWaitlist = await entryRepo.findOne({ where: { username } });
+    if (takenUsernameWaitlist) throw new ConflictException('This username is already reserved on waitlist');
 
-      const newUser = await queryRunner.manager.save(
-        queryRunner.manager.create(User, {
-          email: email,
-          username: username,
-          referralCode: nanoid(8),
-          referredBy: referrer?.id || null,
-          ipAddress: ipAddress,
-          points: 0,
-          emailVerified: false,
-          isFlagged: false,
-          isActive: true,
-          kycStatus: 'pending' as any,
-          tier: 'silver' as any,
-          phoneVerified: false,
-        }),
-      );
-
-      // Award referral points to referrer inside same transaction
-      if (referrer) {
-        // Use QueryBuilder to reliably increment referrer's points
-        await queryRunner.manager
-          .createQueryBuilder()
-          .update(User)
-          .set({ points: () => `points + ${REFERRAL_POINTS}` })
-          .where('id = :id', { id: referrer.id })
-          .execute();
-
-        const referralEvent = queryRunner.manager.create(ReferralEvent, {
-          referrerId: referrer.id,
-          referredUserId: newUser.id,
-          pointsAwarded: REFERRAL_POINTS,
-        });
-        await queryRunner.manager.save(referralEvent);
-
-        // Notify referrer
-        this.notificationsService.notifyReferralJoined(referrer.id, newUser.username).catch(() => {});
-      }
-
-      await queryRunner.commitTransaction();
-
-      // Fire-and-forget side effects
-      this.emailService.sendRegistrationEmail(newUser).catch((err) =>
-        this.logger.error('Registration email failed', err),
-      );
-
-      if (this.fraudQueue) {
-        this.fraudQueue
-          .add('check-registration', { type: 'check-registration', userId: newUser.id, ipAddress }, {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
-          })
-          .catch((err) => this.logger.error('Fraud queue error', err));
-      }
-
-      return {
-        success: true,
-        user: this.sanitizeUser(newUser),
-        referralLink: this.buildReferralLink(newUser.referralCode!),
-      };
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+    let referrer: User | null = null;
+    if (referralCode) {
+      referrer = await this.userRepo.findOne({ where: { referralCode } });
+      // Silently ignore invalid referral codes — don't block registration
     }
+
+    // ── Create waitlist entry without transaction ────────────────────────────
+    const waitlistEntry = await entryRepo.save(
+      entryRepo.create({
+        email,
+        username,
+        referralCode: nanoid(8),
+        referredBy: referrer?.id || null,
+        ipAddress,
+        status: WaitlistStatus.PENDING,
+      }),
+    );
+
+    // Fire-and-forget side effects
+    this.emailService.sendWaitlistConfirmationEmail(waitlistEntry).catch((err) =>
+      this.logger.error('Waitlist confirmation email failed', err),
+    );
+
+    if (this.fraudQueue) {
+      this.fraudQueue
+        .add('check-waitlist-registration', { type: 'check-waitlist-registration', waitlistId: waitlistEntry.id, ipAddress }, {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+        })
+        .catch((err) => this.logger.error('Fraud queue error', err));
+    }
+
+    return {
+      success: true,
+      id: waitlistEntry.id,
+      email: waitlistEntry.email,
+      username: waitlistEntry.username,
+      referralCode: waitlistEntry.referralCode,
+    };
   }
 
   // ── Track Share ──────────────────────────────────────────────────────────
@@ -232,11 +196,20 @@ export class WaitlistService {
     if (RESERVED_USERNAMES.has(username.toLowerCase())) {
       return { available: false, username, reason: 'This username is reserved' };
     }
-    const existing = await this.userRepo.findOne({ where: { username } });
+    const existingUser = await this.userRepo.findOne({ where: { username } });
+    if (existingUser) {
+      return {
+        available: false,
+        username,
+        reason: 'Username is already taken',
+      };
+    }
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    const existingWaitlist = await entryRepo.findOne({ where: { username } });
     return {
-      available: !existing,
+      available: !existingWaitlist,
       username,
-      reason: existing ? 'Username is already taken' : undefined,
+      reason: existingWaitlist ? 'Username is already reserved on waitlist' : undefined,
     };
   }
 
@@ -254,7 +227,20 @@ export class WaitlistService {
   // ── User Points ───────────────────────────────────────────────────────────
 
   async getEntryByEmail(email: string): Promise<WaitlistEntry | null> {
-    return this.entryRepo.findOne({ where: { email } });
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    return entryRepo.findOne({ where: { email } });
+  }
+
+  async findByEmailAndUsername(email: string, username: string) {
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    return entryRepo.findOne({
+      where: { email, username },
+    });
+  }
+
+  async updateWaitlistEntry(entry: WaitlistEntry) {
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    return entryRepo.save(entry);
   }
 
   /**
@@ -295,7 +281,8 @@ export class WaitlistService {
     const now = new Date();
 
     // Fetch all pending (not converted, not yet released) entries
-    const entries = await this.entryRepo.find({
+    const entryRepo = this.dataSource.getRepository(WaitlistEntry);
+    const entries = await entryRepo.find({
       where: { status: WaitlistStatus.PENDING },
     });
 

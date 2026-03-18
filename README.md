@@ -363,10 +363,10 @@ vercel --prod
 
 
 ### Project Links
-- **Website**: [https://dabdub.xyz](https://Cheesepay.xyz)
-- **Documentation**: [https://docs.dabdub.xyz](https://docs.Cheesepay.xyz)
-- **API Reference**: [https://api.dabdub.xyz/docs](https://api.Cheesepay.xyz/docs)
-- **Status Page**: [https://status.dabdub.xyz](https://status.Cheesepay.xyz)
+- **Website**: [https://dabdub.xyz](https://chsepay.xyz)
+- **Documentation**: [https://docs.dabdub.xyz](https://docs.chsepay.xyz)
+- **API Reference**: [https://api.dabdub.xyz/docs](https://api.chsepay.xyz/docs)
+- **Status Page**: [https://status.dabdub.xyz](https://status.chsepay.xyz)
 
 ### Community
 - **Twitter**: [@CryptoSettle](https://twitter.com/Cheesepay)
@@ -375,8 +375,8 @@ vercel --prod
 
 ## 📞 Support
 
-- **Email**: support@Cheesepay.xyz
-- **Enterprise Inquiries**: enterprise@Cheesepay.xyz
+- **Email**: support@chsepay.xyz
+- **Enterprise Inquiries**: enterprise@chsepay.xyz
 
 
 

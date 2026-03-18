@@ -7,6 +7,7 @@ import { OtpModule } from '../otp/otp.module';
 import { EmailModule } from '../email/email.module';
 import { WaitlistModule } from '../waitlist/waitlist.module';
 import { StellarModule } from '../stellar/stellar.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { Device } from '../devices/entities/device.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -24,6 +25,7 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
     StellarModule,
     EmailModule,
     WaitlistModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy],

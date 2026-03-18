@@ -54,8 +54,8 @@ export const ratesConfig = registerAs('rates', () => ({
 }));
 
 export const emailConfig = registerAs('email', () => ({
-  zeptoApiKey: process.env.ZEPTOMAIL_API_KEY || '',
-  fromAddress: process.env.ZEPTOMAIL_FROM_ADDRESS || 'noreply@cheesepay.xyz',
-  fromName: process.env.ZEPTOMAIL_FROM_NAME || 'Cheese Pay',
-  replyTo: process.env.ZEPTOMAIL_REPLY_TO || 'support@cheesepay.xyz',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  fromAddress: process.env.EMAIL_FROM || 'hi@cheesepay.xyz',
+  fromName: process.env.EMAIL_FROM_NAME || 'CheePay',
+  replyTo: process.env.EMAIL_REPLY_TO || 'hi@cheesepay.xyz',
 }));

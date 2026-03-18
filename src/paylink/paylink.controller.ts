@@ -36,7 +36,7 @@ export class PayLinkController {
   @ApiOperation({
     summary: 'Create a payment request link',
     description:
-      'Generates a shareable payment request link. The payer can open it on cheesepay.xyz, connect their Cheese Wallet, and settle the amount in USDC. Links expire after 7 days by default.',
+      'Generates a shareable payment request link. The payer can open it on chsepay.xyz, connect their Cheese Wallet, and settle the amount in USDC. Links expire after 7 days by default.',
   })
   @ApiResponse({
     status: 201,
@@ -90,7 +90,7 @@ export class PayLinkController {
   @ApiOperation({
     summary: 'Resolve a payment link (public)',
     description:
-      "Public endpoint — no authentication required. Returns the link's amount, creator details, note, status, and expiry. Used by cheesepay.xyz to render the pay page before the payer authenticates.",
+      "Public endpoint — no authentication required. Returns the link's amount, creator details, note, status, and expiry. Used by chsepay.xyz to render the pay page before the payer authenticates.",
   })
   @ApiParam({
     name: 'token',
