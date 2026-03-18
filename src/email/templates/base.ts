@@ -31,7 +31,7 @@ export function baseLayout(params: {
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="color-scheme" content="dark" />
   <meta name="supported-color-schemes" content="dark" />
-  <title>Cheese Wallet</title>
+  <title>Cheese Pay</title>
   <!--[if mso]>
   <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <![endif]-->
@@ -64,7 +64,7 @@ export function baseLayout(params: {
               <tr>
                 <td style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});border-radius:16px;padding:12px 20px;display:inline-block;">
                   <span style="font-size:22px;font-weight:700;color:${BRAND.black};letter-spacing:-0.5px;font-family:'Inter',sans-serif;">
-                    🧀 Cheese Wallet
+                    🧀 Cheese Pay
                   </span>
                 </td>
               </tr>
@@ -83,15 +83,15 @@ export function baseLayout(params: {
         <tr>
           <td style="padding-top:32px;text-align:center;">
             <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;line-height:1.8;">
-              Cheese Wallet · The Golden Standard in Digital Finance<br/>
-              <a href="https://cheesewallet.app" style="color:${BRAND.gold};text-decoration:none;">cheesewallet.app</a>
+              Cheese Pay · The Golden Standard in Digital Finance<br/>
+              <a href="https://cheesepay.xyz" style="color:${BRAND.gold};text-decoration:none;">https://cheesepay.xyz</a>
               &nbsp;·&nbsp;
-              <a href="https://cheesewallet.app/privacy" style="color:${BRAND.textMuted};text-decoration:none;">Privacy</a>
+              <a href="https://cheesepay.xyz/privacy" style="color:${BRAND.textMuted};text-decoration:none;">Privacy</a>
               &nbsp;·&nbsp;
-              <a href="https://cheesewallet.app/terms" style="color:${BRAND.textMuted};text-decoration:none;">Terms</a>
+              <a href="https://cheesepay.xyz/terms" style="color:${BRAND.textMuted};text-decoration:none;">Terms</a>
             </p>
             <p style="margin-top:12px;font-size:11px;color:${BRAND.border};font-family:'Inter',sans-serif;">
-              © ${year} Cheese Wallet. All rights reserved.
+              © ${year} Cheese Pay. All rights reserved.
             </p>
           </td>
         </tr>
