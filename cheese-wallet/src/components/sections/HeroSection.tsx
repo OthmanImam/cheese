@@ -55,12 +55,8 @@ export function HeroSection() {
     const fetchCount = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
-        const endpoint = `${apiUrl}/waitlist/count`;
-        console.log('Fetching from:', endpoint);
-        const response = await fetch(endpoint);
-        console.log('Response status:', response.status);
+        const response = await fetch(`${apiUrl}/waitlist/count`);
         const data = await response.json();
-        console.log('Raw response data:', data, typeof data);
         // Handle different response formats
         let count = 0;
         if (typeof data === 'number') {
@@ -70,7 +66,6 @@ export function HeroSection() {
         } else if (data?.count) {
           count = data.count;
         }
-        console.log('Parsed count:', count);
         setTarget(count);
         setDisplayCount(0); // Reset display count for animation
       } catch (error) {

@@ -230,11 +230,31 @@ export class WaitlistService {
     if (RESERVED_USERNAMES.has(username.toLowerCase())) {
       return { available: false, username, reason: 'This username is reserved' };
     }
-    const existing = await this.userRepo.findOne({ where: { username } });
+    
+    // Check if already taken by registered user
+    const existingUser = await this.userRepo.findOne({ where: { username } });
+    if (existingUser) {
+      return {
+        available: false,
+        username,
+        reason: 'Username is already taken',
+      };
+    }
+    
+    // Check if already reserved in waitlist
+    const existingEntry = await this.entryRepo.findOne({ where: { username } });
+    if (existingEntry) {
+      return {
+        available: false,
+        username,
+        reason: 'Username is already reserved',
+      };
+    }
+    
     return {
-      available: !existing,
+      available: true,
       username,
-      reason: existing ? 'Username is already taken' : undefined,
+      reason: undefined,
     };
   }
 
