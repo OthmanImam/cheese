@@ -36,13 +36,13 @@ export function waitlistConfirmation(params: {
           Welcome to the<br/>
           <span style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.goldLight});
                        -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
-            Golden List.
+            CheesePay Waitlist.
           </span>
         </h1>
         <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
           You've secured your spot before the world finds out. When Cheese Wallet launches,
-          your username will be waiting — reserved exclusively for you.
+          your username will be waiting. Reserved exclusively for you.
         </p>
 
         <!-- Username card -->
@@ -82,10 +82,10 @@ export function waitlistConfirmation(params: {
           What to expect when we launch
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
-          ${featureRow(ICONS.dollar(), 'Hold & earn on USDC', 'Up to 5% APY — no lock-ups')}
+          ${featureRow(ICONS.dollar(), 'Keep you money in USDC', 'have your transactions in Naira')}
           ${featureRow(ICONS.zap(), 'Instant NGN withdrawals', 'Send to any Nigerian bank in seconds')}
+          ${featureRow(ICONS.send(), 'Send money by username', 'Just @username. No account numbers')}
           ${featureRow(ICONS.creditCard(), 'Virtual dollar card', 'Pay globally with your USDC balance')}
-          ${featureRow(ICONS.send(), 'Send money by username', 'Just @username — no account numbers')}
         </table>
 
         ${infoBox(`We'll email you at <strong style="color:${BRAND.textLight};">${params.email}</strong> the moment we go live. Early reservers get priority access and exclusive launch bonuses.`)}
