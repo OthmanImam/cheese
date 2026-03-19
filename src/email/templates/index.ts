@@ -17,6 +17,7 @@ export function waitlistConfirmation(params: {
   username: string;
   email: string;
   position?: number;
+  referralCode?: string;
 }): { subject: string; html: string } {
   const subject = `@${params.username} is yours — Welcome to Cheese Pay 🧀`;
   const html = baseLayout({
@@ -114,6 +115,39 @@ export function waitlistConfirmation(params: {
             )
             .join('')}
         </table>
+
+        ${
+          params.referralCode
+            ? `
+        <!-- Referral section -->
+        <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};
+                  font-family:'Inter',sans-serif;margin-bottom:16px;letter-spacing:-0.2px;">
+          Share & Earn Bonus Points
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
+          <tr>
+            <td style="background:linear-gradient(135deg,${BRAND.surface},${BRAND.cardBg});
+                       border:1px solid ${BRAND.gold}44;border-radius:16px;padding:28px;">
+              <p style="font-size:12px;letter-spacing:2px;color:${BRAND.textMuted};
+                         text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:12px;">
+                Your Referral Code
+              </p>
+              <p style="font-size:24px;font-weight:700;color:${BRAND.gold};
+                         font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin-bottom:16px;">
+                ${params.referralCode}
+              </p>
+              <p style="font-size:14px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                        line-height:1.6;margin-bottom:16px;">
+                Share this code with friends and family. When they join using your code, you'll both earn bonus points and climb the leaderboard faster!
+              </p>
+              <p style="font-size:13px;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0;">
+                🎁 <strong>Referral bonuses:</strong> 50 points for you + 25 points for them
+              </p>
+            </td>
+          </tr>
+        </table>`
+            : ''
+        }
 
         ${infoBox(`We'll email you at <strong style="color:${BRAND.textLight};">${params.email}</strong> the moment we go live. Early reservers get priority access and exclusive launch bonuses.`)}
       </div>

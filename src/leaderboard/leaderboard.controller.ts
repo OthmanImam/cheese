@@ -18,8 +18,14 @@ export class LeaderboardController {
     return this.leaderboardService.getUserRank(username);
   }
 
-  @Get('stats')
-  getStats() {
-    return this.leaderboardService.getStats();
+  @Get('waitlist')
+  getWaitlistLeaderboard(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit) : 100;
+    return this.leaderboardService.getWaitlistLeaderboard(limitNum);
+  }
+
+  @Get('waitlist/position')
+  getWaitlistPosition(@Query('username') username: string) {
+    return this.leaderboardService.getWaitlistPosition(username);
   }
 }

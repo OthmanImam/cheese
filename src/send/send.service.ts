@@ -11,7 +11,7 @@ import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../auth/entities/user.entity';
 import { Device } from '../devices/entities/device.entity';
-import { StellarService } from '../stellar/stellar.service';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 import { RatesService } from '../rates/rates.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TxStatus, TxType } from '../transactions/entities/transaction.entity';
@@ -25,7 +25,7 @@ export class SendService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Device) private readonly deviceRepo: Repository<Device>,
-    private readonly stellarService: StellarService,
+    private readonly blockchainService: BlockchainService,
     private readonly ratesService: RatesService,
     private readonly txService: TransactionsService,
   ) {}
@@ -110,7 +110,7 @@ export class SendService {
     }
 
     // 5. Check balance
-    const balance = await this.stellarService.getUsdcBalance(
+    const balance = await this.blockchainService.getUsdcBalance(
       sender.stellarPublicKey,
     );
     const feeUsdc = amount * PLATFORM_FEE_PCT;
@@ -141,7 +141,7 @@ export class SendService {
 
     // 8. Execute on-chain
     try {
-      const txHash = await this.stellarService.sendUsdc({
+      const txHash = await this.blockchainService.sendUsdc({
         fromSecretEnc: sender.stellarSecretEnc,
         toAddress: params.toAddress,
         amountUsdc: params.amountUsdc,

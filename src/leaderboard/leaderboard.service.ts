@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
+import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 
 @Injectable()
 export class LeaderboardService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(WaitlistEntry)
+    private readonly waitlistRepo: Repository<WaitlistEntry>,
   ) {}
 
   async getTopUsers(limit: number = 100) {
@@ -30,7 +33,7 @@ export class LeaderboardService {
   async getUserRank(username: string) {
     const user = await this.userRepo.findOne({
       where: { username },
-      select: ['id', 'points'],
+      select: ['id', 'points', 'createdAt'],
     });
     if (!user) return null;
 
@@ -50,21 +53,27 @@ export class LeaderboardService {
     };
   }
 
-  async getStats() {
-    // Count all users (not just those with 0 points)
-    const totalUsers = await this.userRepo.count();
-    // Count users with points > 0
-    const activeUsers = await this.userRepo.count({ where: { points: MoreThan(0) } });
-    // Sum all points
-    const totalPointsResult = await this.userRepo
-      .createQueryBuilder('u')
-      .select('COALESCE(SUM(u.points), 0)', 'sum')
-      .getRawOne();
+  async getWaitlistLeaderboard(limit: number = 100) {
+    const entries = await this.userRepo.manager
+      .createQueryBuilder(WaitlistEntry, 'entry')
+      .select(['entry.username', 'entry.position', 'entry.createdAt'])
+      .where('entry.position IS NOT NULL')
+      .orderBy('entry.position', 'ASC')
+      .limit(limit)
+      .getMany();
 
-    return {
-      totalUsers,
-      activeUsers,
-      totalPoints: parseInt(totalPointsResult?.sum || '0') || 0,
-    };
+    return entries.map(e => ({
+      username: e.username,
+      position: e.position,
+      createdAt: e.createdAt,
+    }));
+  }
+
+  async getWaitlistPosition(username: string) {
+    const entry = await this.waitlistRepo.findOne({
+      where: { username },
+      select: ['position'],
+    });
+    return entry?.position || null;
   }
 }

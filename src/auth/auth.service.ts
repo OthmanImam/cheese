@@ -16,7 +16,6 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
 import { OtpType } from '../otp/entities/otp.entity';
-import { BlockchainService } from '../blockchain/blockchain.service';
 import { Device } from '../devices/entities/device.entity';
 import {
   ChangePinDto,
@@ -31,6 +30,10 @@ import { EmailService } from '../email/email.service';
 import { WaitlistService } from '../waitlist/waitlist.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from './entities/user.entity';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
+import { WaitlistEntry, WaitlistStatus } from '../waitlist/entities/waitlist-entry.entity';
+import { ReferralEvent, REFERRAL_POINTS } from '../waitlist/entities/referral-event.entity';
+import { nanoid } from 'nanoid';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -43,76 +46,137 @@ export class AuthService {
     @InjectRepository(RefreshToken)
     private readonly rtRepo: Repository<RefreshToken>,
     @InjectRepository(Device) private readonly deviceRepo: Repository<Device>,
+    @InjectRepository(WaitlistEntry) private readonly waitlistRepo: Repository<WaitlistEntry>,
+    @InjectRepository(ReferralEvent) private readonly referralEventRepo: Repository<ReferralEvent>,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
     private readonly blockchainService: BlockchainService,
+    
     private readonly emailService: EmailService,
     private readonly waitlistService: WaitlistService,
   ) {}
 
   // ── Signup ────────────────────────────────────────────────
   async signup(dto: SignupDto): Promise<{ userId: string; email: string }> {
-    // Check if user already exists from waitlist
+    // Check if user already exists in User table
     const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
+      where: { email: dto.email, emailVerified: true },
     });
 
     if (existingUser) {
-      if (existingUser.emailVerified) {
-        throw new ConflictException('Email already registered');
-      }
-      // User exists from waitlist, check username match
-      if (existingUser.username !== dto.username) {
-        throw new ConflictException('Username does not match waitlist reservation');
-      }
-      // Update the existing user
-      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-      await this.userRepo.update(existingUser.id, {
-        fullName: dto.fullName,
-        phone: dto.phone,
-        passwordHash,
-        emailVerified: false, // will be verified later
-      });
-      const user = await this.userRepo.findOne({ where: { id: existingUser.id } });
-      if (!user) throw new Error('User not found after update');
-      // Create Stellar wallet if not exists
-      if (!user.stellarPublicKey) {
-        try {
-          const wallet = await this.BlockchainService.createWallet();
-          await this.BlockchainService.ensureTrustline(wallet.secretKeyEnc);
-          user.stellarPublicKey = wallet.publicKey;
-          user.stellarSecretEnc = wallet.secretKeyEnc;
-          await this.userRepo.save(user);
-        } catch (err) {
-          this.logger.error(
-            `Stellar wallet creation failed: ${(err as Error).message}`,
-          );
-        }
-      }
-      // Register the device only if it doesn't exist
-      const existingDevice = await this.deviceRepo.findOne({
-        where: { deviceId: dto.deviceId },
-      });
-      if (!existingDevice) {
-        await this.deviceRepo.save(
-          this.deviceRepo.create({
-            userId: user.id,
-            deviceId: dto.deviceId,
-            publicKey: dto.devicePublicKey,
-            deviceName: 'Primary Device',
-          }),
-        );
-      }
-      // Send email verification OTP
-      const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
-        fullName: dto.fullName,
-      });
-      this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
-      return { userId: user.id, email: user.email };
+      throw new ConflictException('Email already registered');
     }
 
-    // New user signup
+    // Check if email/username is on waitlist
+    const waitlistEntry = await this.waitlistRepo.findOne({
+      where: { email: dto.email },
+    });
+
+    if (waitlistEntry) {
+      // Verify username matches reservation
+      if (waitlistEntry.username !== dto.username) {
+        throw new ConflictException('Username does not match waitlist reservation');
+      }
+      if (waitlistEntry.status === WaitlistStatus.CONVERTED) {
+        throw new ConflictException('This email has already been converted');
+      }
+      // User is reserving from waitlist — create full User entry
+      return this.createUserFromWaitlist(dto, waitlistEntry);
+    }
+
+    // Brand new signup not from waitlist
+    return this.createNewUser(dto);
+  }
+
+  private async createUserFromWaitlist(
+    dto: SignupDto,
+    waitlistEntry: WaitlistEntry,
+  ): Promise<{ userId: string; email: string }> {
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+    // Create user
+    const user = this.userRepo.create({
+      fullName: dto.fullName,
+      email: dto.email,
+      phone: dto.phone,
+      username: dto.username,
+      passwordHash,
+      referralCode: nanoid(8),
+      referredBy: waitlistEntry.referrerId || null,
+    });
+
+    // Create Stellar custodial wallet
+    try {
+      const wallet = await this.blockchainService.createStellarWallet();
+      await this.blockchainService.ensureTrustline(wallet.secretKeyEnc);
+      user.stellarPublicKey = wallet.publicKey;
+      user.stellarSecretEnc = wallet.secretKeyEnc;
+    } catch (err) {
+      this.logger.error(
+        `Stellar wallet creation failed: ${(err as Error).message}`,
+      );
+      // Don't block signup — wallet can be retried
+    }
+
+    await this.userRepo.save(user);
+
+    // Award referral points if referred by someone
+    if (waitlistEntry.referrerId) {
+      try {
+        await this.userRepo.increment(
+          { id: waitlistEntry.referrerId },
+          'points',
+          REFERRAL_POINTS,
+        );
+
+        // Record the referral event
+        await this.referralEventRepo.save(
+          this.referralEventRepo.create({
+            referrerId: waitlistEntry.referrerId,
+            referredUserId: user.id,
+            pointsAwarded: REFERRAL_POINTS,
+          }),
+        );
+
+        this.logger.log(
+          `Referral points awarded [referrer=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to award referral points: ${(err as Error).message}`,
+        );
+        // Don't block signup
+      }
+    }
+
+    // Mark waitlist entry as converted
+    await this.waitlistRepo.update(
+      { id: waitlistEntry.id },
+      { status: WaitlistStatus.CONVERTED, convertedAt: new Date() },
+    );
+
+    // Register the device
+    await this.deviceRepo.save(
+      this.deviceRepo.create({
+        userId: user.id,
+        deviceId: dto.deviceId,
+        publicKey: dto.devicePublicKey,
+        deviceName: 'Primary Device',
+      }),
+    );
+
+    // Send email verification OTP
+    const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
+      fullName: dto.fullName,
+    });
+    this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
+
+    return { userId: user.id, email: user.email };
+  }
+
+  private async createNewUser(dto: SignupDto): Promise<{ userId: string; email: string }> {
+    // Check for email/phone/username conflicts
     const phoneExists = await this.userRepo.findOne({
       where: { phone: dto.phone },
     });
@@ -123,6 +187,11 @@ export class AuthService {
     });
     if (usernameExists) throw new ConflictException('Username taken');
 
+    const emailExists = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
+    if (emailExists) throw new ConflictException('Email already registered');
+
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     // Create user
@@ -132,12 +201,13 @@ export class AuthService {
       phone: dto.phone,
       username: dto.username,
       passwordHash,
+      referralCode: nanoid(8),
     });
 
     // Create Stellar custodial wallet
     try {
-      const wallet = await this.BlockchainService.createWallet();
-      await this.BlockchainService.ensureTrustline(wallet.secretKeyEnc);
+      const wallet = await this.blockchainService.createStellarWallet();
+      await this.blockchainService.ensureTrustline(wallet.secretKeyEnc);
       user.stellarPublicKey = wallet.publicKey;
       user.stellarSecretEnc = wallet.secretKeyEnc;
     } catch (err) {
@@ -217,7 +287,7 @@ export class AuthService {
     });
     if (!device) throw new UnauthorizedException('Device not registered');
 
-    const signatureValid = this.BlockchainService.verifyDeviceSignature({
+    const signatureValid = this.blockchainService.verifyDeviceSignature({
       publicKey: device.publicKey,
       signature: dto.deviceSignature,
       message: dto.deviceId, // client signs their own deviceId

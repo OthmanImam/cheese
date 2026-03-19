@@ -11,7 +11,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { timingSafeEqual, randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
-import { StellarService } from '../stellar/stellar.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import {
   VirtualCard,
@@ -19,6 +18,7 @@ import {
   CardNetwork,
 } from './entities/virtual-card.entity';
 import { RevealCvvDto } from './dto';
+import { BlockchainService } from '../blockchain/services/blockchain.service';
 
 @Injectable()
 export class CardsService {
@@ -29,7 +29,7 @@ export class CardsService {
     private readonly cardRepo: Repository<VirtualCard>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly config: ConfigService,
-    private readonly stellarService: StellarService,
+    private readonly blockchainService: BlockchainService,
     private readonly txService: TransactionsService,
   ) {}
 
@@ -86,7 +86,7 @@ export class CardsService {
     if (card.status === CardStatus.FROZEN)
       throw new ForbiddenException('Card is frozen');
 
-    const cvv = this.stellarService.decryptSecret(card.cvvEnc);
+    const cvv = this.blockchainService.decryptSecret(card.cvvEnc);
 
     // CVV is valid for 60 seconds after reveal
     const expiresAt = new Date(Date.now() + 60_000);
@@ -110,8 +110,8 @@ export class CardsService {
     const cvv = String(randomInt(100, 999));
     const expiry = this.generateExpiry();
 
-    const cardNumberEnc = this.stellarService.encryptSecret(cardNumber);
-    const cvvEnc = this.stellarService.encryptSecret(cvv);
+    const cardNumberEnc = this.blockchainService.encryptSecret(cardNumber);
+    const cvvEnc = this.blockchainService.encryptSecret(cvv);
     const last4 = cardNumber.slice(-4);
 
     const card = this.cardRepo.create({

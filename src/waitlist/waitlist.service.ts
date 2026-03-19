@@ -13,7 +13,7 @@ import { Queue } from 'bullmq';
 import { nanoid } from 'nanoid';
 import { User } from '../auth/entities/user.entity';
 import { ShareEvent, SharePlatform, PLATFORM_POINTS } from './entities/share-event.entity';
-import { ReferralEvent, REFERRAL_POINTS } from './entities/referral-event.entity';
+import { ReferralEvent } from './entities/referral-event.entity';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto, ShareDto } from './dto/waitlist.dto';
@@ -73,16 +73,22 @@ export class WaitlistService {
 
     try {
       // Pessimistic write lock prevents race conditions on username
-      const takenUsername = await queryRunner.manager.findOne(User, {
+      const takenUsername = await queryRunner.manager.findOne(WaitlistEntry, {
         where: { username },
         lock: { mode: 'pessimistic_write' },
       });
-      if (takenUsername) throw new ConflictException('This username is already taken');
+      if (takenUsername) throw new ConflictException('This username is already reserved');
 
-      const takenEmail = await queryRunner.manager.findOne(User, {
+      const takenEmail = await queryRunner.manager.findOne(WaitlistEntry, {
         where: { email },
       });
-      if (takenEmail) throw new ConflictException('This email is already registered');
+      if (takenEmail) throw new ConflictException('This email is already on the waitlist');
+
+      // Only check User table for active users
+      const userWithUsername = await queryRunner.manager.findOne(User, {
+        where: { username, emailVerified: true },
+      });
+      if (userWithUsername) throw new ConflictException('This username is already taken');
 
       let referrer: User | null = null;
       if (referralCode) {
@@ -92,64 +98,56 @@ export class WaitlistService {
         // Silently ignore invalid referral codes — don't block registration
       }
 
-      const newUser = await queryRunner.manager.save(
-        queryRunner.manager.create(User, {
-          email: email,
-          username: username,
+      // Calculate position (total waitlist entries + 1)
+      const totalEntries = await queryRunner.manager.count(WaitlistEntry);
+      const position = totalEntries + 1;
+
+      const newWaitlistEntry = await queryRunner.manager.save(
+        queryRunner.manager.create(WaitlistEntry, {
+          email,
+          username,
+          status: WaitlistStatus.PENDING,
+          referralSource: referralCode || null,
+          referrerId: referrer?.id || null,
           referralCode: nanoid(8),
-          referredBy: referrer?.id || null,
-          ipAddress: ipAddress,
-          points: 0,
-          emailVerified: false,
-          isFlagged: false,
-          isActive: true,
-          kycStatus: 'pending' as any,
-          tier: 'silver' as any,
-          phoneVerified: false,
+          ipAddress,
+          position,
         }),
       );
 
-      // Award referral points to referrer inside same transaction
-      if (referrer) {
-        // Use QueryBuilder to reliably increment referrer's points
-        await queryRunner.manager
-          .createQueryBuilder()
-          .update(User)
-          .set({ points: () => `points + ${REFERRAL_POINTS}` })
-          .where('id = :id', { id: referrer.id })
-          .execute();
-
-        const referralEvent = queryRunner.manager.create(ReferralEvent, {
-          referrerId: referrer.id,
-          referredUserId: newUser.id,
-          pointsAwarded: REFERRAL_POINTS,
-        });
-        await queryRunner.manager.save(referralEvent);
-
-        // Notify referrer
-        this.notificationsService.notifyReferralJoined(referrer.id, newUser.username).catch(() => {});
-      }
+      // NOTE: Referral points are awarded during signup, not waitlist registration
+      // This prevents double-counting and ensures points are only given for actual conversions
 
       await queryRunner.commitTransaction();
 
       // Fire-and-forget side effects
-      this.emailService.sendRegistrationEmail(newUser).catch((err) =>
-        this.logger.error('Registration email failed', err),
+      this.emailService.sendWaitlistConfirmation({
+        to: newWaitlistEntry.email,
+        username: newWaitlistEntry.username,
+        position: newWaitlistEntry.position || undefined,
+        referralCode: newWaitlistEntry.referralCode || undefined,
+      }).then(async () => {
+        // Update notifiedAt when email is successfully sent
+        await this.entryRepo.update(newWaitlistEntry.id, {
+          notifiedAt: new Date(),
+        });
+      }).catch((err) =>
+        this.logger.error('Waitlist confirmation email failed', err),
       );
 
-      if (this.fraudQueue) {
-        this.fraudQueue
-          .add('check-registration', { type: 'check-registration', userId: newUser.id, ipAddress }, {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
-          })
-          .catch((err) => this.logger.error('Fraud queue error', err));
-      }
+      const frontendUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+      const referralLink = `${frontendUrl}/waitlist?ref=${newWaitlistEntry.referralCode}`;
 
       return {
-        success: true,
-        user: this.sanitizeUser(newUser),
-        referralLink: this.buildReferralLink(newUser.referralCode!),
+        user: {
+          id: newWaitlistEntry.id,
+          email: newWaitlistEntry.email,
+          username: newWaitlistEntry.username,
+          referralCode: newWaitlistEntry.referralCode,
+          points: 0, // New users start with 0 points
+          createdAt: newWaitlistEntry.createdAt.toISOString(),
+        },
+        referralLink,
       };
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -232,11 +230,31 @@ export class WaitlistService {
     if (RESERVED_USERNAMES.has(username.toLowerCase())) {
       return { available: false, username, reason: 'This username is reserved' };
     }
-    const existing = await this.userRepo.findOne({ where: { username } });
+    
+    // Check if already taken by registered user
+    const existingUser = await this.userRepo.findOne({ where: { username } });
+    if (existingUser) {
+      return {
+        available: false,
+        username,
+        reason: 'Username is already taken',
+      };
+    }
+    
+    // Check if already reserved in waitlist
+    const existingEntry = await this.entryRepo.findOne({ where: { username } });
+    if (existingEntry) {
+      return {
+        available: false,
+        username,
+        reason: 'Username is already reserved',
+      };
+    }
+    
     return {
-      available: !existing,
+      available: true,
       username,
-      reason: existing ? 'Username is already taken' : undefined,
+      reason: undefined,
     };
   }
 
@@ -279,6 +297,16 @@ export class WaitlistService {
       referralCount,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  async getTotalRegisteredUsers(): Promise<number> {
+    return this.userRepo.count();
+  }
+
+  async getTotalReservedUsernames(): Promise<number> {
+    const count = await this.entryRepo.count();
+    this.logger.log(`Total reserved usernames: ${count}`);
+    return count;
   }
 
   // ────────────────────────────────────────────────────────

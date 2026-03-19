@@ -51,4 +51,9 @@ export class CheckUsernameDto {
   @Matches(/^[a-zA-Z0-9_]+$/)
   @Transform(({ value }) => value?.toLowerCase().trim())
   username: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim() || undefined)
+  referralCode?: string;
 }

@@ -91,13 +91,16 @@ export async function checkUsername(username: string): Promise<UsernameCheckResp
       params: { username },
     });
     
-    // The response should be the check result directly
-    console.log('[checkUsername] ✓ Success:', data);
-    if (data && typeof data === 'object') {
+    console.log('[checkUsername] Raw response:', data);
+    
+    // Handle wrapped response: { success: true, data: {...} }
+    const response = data?.data || data;
+    
+    if (response && typeof response === 'object') {
       return {
-        available: data.available ?? true,
-        username: data.username ?? username,
-        reason: data.reason,
+        available: response.available === true, // Explicitly check for true
+        username: response.username ?? username,
+        reason: response.reason,
       };
     }
     

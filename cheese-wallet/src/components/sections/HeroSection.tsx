@@ -48,19 +48,48 @@ function TypewriterName(): JSX.Element {
 
 export function HeroSection() {
   const [displayCount, setDisplayCount] = useState(0);
-  const TARGET = 2847;
+  const [target, setTarget] = useState(0);
 
   useEffect(() => {
+    // Fetch the actual count from the backend endpoint
+    const fetchCount = async () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
+        const response = await fetch(`${apiUrl}/waitlist/count`);
+        const data = await response.json();
+        // Handle different response formats
+        let count = 0;
+        if (typeof data === 'number') {
+          count = data;
+        } else if (data?.data) {
+          count = data.data;
+        } else if (data?.count) {
+          count = data.count;
+        }
+        setTarget(count);
+        setDisplayCount(0); // Reset display count for animation
+      } catch (error) {
+        console.error('Failed to fetch reserved usernames count:', error);
+        setTarget(0);
+      }
+    };
+
+    fetchCount();
+  }, []);
+
+  useEffect(() => {
+    if (target === 0) return;
+
     const duration = 1800;
     const start = Date.now();
     const tick = setInterval(() => {
       const t = Math.min((Date.now() - start) / duration, 1);
       const eased = 1 - Math.pow(1 - t, 3);
-      setDisplayCount(Math.floor(eased * TARGET));
+      setDisplayCount(Math.floor(eased * target));
       if (t >= 1) clearInterval(tick);
     }, 16);
     return () => clearInterval(tick);
-  }, []);
+  }, [target]);
 
   return (
     <section className="relative pt-32 pb-16 px-6 text-center">

@@ -39,6 +39,12 @@ export class WaitlistEntry {
   @Column({ name: 'referral_source', type: 'varchar', nullable: true })
   referralSource: string | null;
 
+  @Column({ name: 'referrer_id', type: 'uuid', nullable: true })
+  referrerId: string | null;
+
+  @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
+  referralCode: string | null;
+
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 

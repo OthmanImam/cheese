@@ -1,2 +1,7 @@
 node_modules/
 dist
+
+
+# Ignore environment variable files, but keep the example files
+.env*
+!.env.example
