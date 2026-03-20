@@ -102,7 +102,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
   subject: string;
   html: string;
 } {
-  const subject = `Cheese Wallet is LIVE — @${params.username}, your turn.`;
+  const subject = `Cheese Pay is LIVE  @${params.username}, your turn.`;
   const html = baseLayout({
     preheader: 'The wait is over. Your wallet is ready. Claim your username now.',
     body: `
