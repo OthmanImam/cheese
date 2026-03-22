@@ -1,7 +1,3 @@
-import { DataSource } from 'typeorm';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host:     process.env.DB_HOST     || 'localhost',
@@ -9,8 +5,8 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER     || 'postgres',
   password: process.env.DB_PASS     || 'postgres',
   database: process.env.DB_NAME     || 'cheese_pay',
-  entities:   ['src/**/*.entity.ts'],
-  migrations: ['src/database/migrations/*.ts'],
+  entities:   [__dirname + '/../**/*.entity.{ts,js}'],   // ← ts and js
+  migrations: [__dirname + '/migrations/*.{ts,js}'],     // ← ts and js
   ssl:
     process.env.NODE_ENV === 'production'
       ? { rejectUnauthorized: false }
