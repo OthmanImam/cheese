@@ -44,7 +44,7 @@ import { RefreshToken } from './auth/entities/refresh-token.entity';
 import { Device } from './devices/entities/device.entity';
 import { Otp } from './otp/entities/otp.entity';
 import { Transaction } from './transactions/entities/transaction.entity';
-import { ExchangeRate } from './rates/entities/exchange-rate.entity';
+// import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 import { BankTransfer } from './banks/entities/bank-transfer.entity';
 import { VirtualCard } from './cards/entities/virtual-card.entity';
 import { Notification } from './notifications/entities/notification.entity';
@@ -121,7 +121,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
             Device,
             Otp,
             Transaction,
-            ExchangeRate,
+            // ExchangeRate,
             ShareEvent,
             ReferralEvent,
             WaitlistEntry,
