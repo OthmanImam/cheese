@@ -8,12 +8,20 @@ export const appConfig = registerAs('app', () => ({
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 }));
 
+// export const dbConfig = registerAs('db', () => ({
+//   host: process.env.DB_HOST,
+//   port: parseInt(process.env.DB_PORT || '5432', 10),
+//   name: process.env.DB_NAME,
+//   user: process.env.DB_USER,
+//   password: process.env.DB_PASS,
+// }));
+
 export const dbConfig = registerAs('db', () => ({
-  host: process.env.DB_HOST,
+  host: process.env.DB_HOST,      // ← matches Railway
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  name: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  name: process.env.DB_NAME,      // ← matches Railway
+  user: process.env.DB_USER,      // ← matches Railway
+  password: process.env.DB_PASS,  // ← matches Railway
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({
