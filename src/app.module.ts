@@ -24,7 +24,7 @@ import { JwtAccessGuard } from './auth/guards/jwt.guard';
 import { AuthModule } from './auth/auth.module';
 import { DevicesModule } from './devices/devices.module';
 import { OtpModule } from './otp/otp.module';
-import { BlockchainModule } from './blockchain/blockchain.module';
+// import { BlockchainModule } from './blockchain/blockchain.module';
 // Phase 2 — commented out until needed
 // import { WalletModule } from './wallet/wallet.module';
 // import { RatesModule } from './rates/rates.module';
@@ -55,8 +55,8 @@ import { Otp } from './otp/entities/otp.entity';
 import { ShareEvent } from './waitlist/entities/share-event.entity';
 import { ReferralEvent } from './waitlist/entities/referral-event.entity';
 import { WaitlistEntry } from './waitlist/entities/waitlist-entry.entity';
-import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity';
-import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
+// import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity';
+// import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
 // Inactive entities — uncomment when their modules are re-enabled
 import { Transaction } from './transactions/entities/transaction.entity';
 import { ExchangeRate } from './rates/entities/exchange-rate.entity';
@@ -133,8 +133,8 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
             ShareEvent,
             ReferralEvent,
             WaitlistEntry,
-            BlockchainWallet,
-            BlockchainTransaction,
+            // BlockchainWallet,
+            // BlockchainTransaction,
             // Uncomment as you re-enable each module:
             Transaction,
             ExchangeRate,
