@@ -132,7 +132,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
             BlockchainTransaction,
             // PaymentRequest,
           ],
-          synchronize: config.get('app.nodeEnv') !== 'production',
+          synchronize: false,
           logging: config.get('app.nodeEnv') === 'development',
           ssl:
             config.get('app.nodeEnv') === 'production'
