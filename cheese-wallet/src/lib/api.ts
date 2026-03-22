@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
+console.log('API_BASE:', API_BASE);
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -160,14 +161,24 @@ export async function getLeaderboard(): Promise<LeaderboardResponse> {
     const { data } = await api.get<any>('/waitlist/leaderboard');
     // Handle wrapped response: { success: true, data: {...} }
     const response = data?.data || data;
-    
+
+    // Normalize both object and array shapes
+    if (Array.isArray(response)) {
+      return { entries: response, total: response.length };
+    }
+
     if (response && typeof response === 'object') {
+      const rawEntries = Array.isArray(response.entries) ? response.entries : [];
+      const entriesWithRank = rawEntries.map((entry: any, index: number) => ({
+        ...entry,
+        rank: typeof entry.rank === 'number' ? entry.rank : index + 1,
+      }));
       return {
-        entries: response.entries || [],
-        total: response.total || 0,
+        entries: entriesWithRank,
+        total: typeof response.total === 'number' ? response.total : rawEntries.length,
       };
     }
-    
+
     return { entries: [], total: 0 };
   } catch (error: any) {
     console.error('[getLeaderboard] Error:', error);
@@ -202,5 +213,23 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
   } catch (error: any) {
     console.error('[getUserRank] Error:', error);
     throw error;
+  }
+}
+
+export async function getReservedUsernamesCount(): Promise<number> {
+  try {
+    const { data } = await api.get<any>('/waitlist/count');
+    // Handle different response formats
+    if (typeof data === 'number') {
+      return data;
+    } else if (data?.data && typeof data.data === 'number') {
+      return data.data;
+    } else if (data?.count && typeof data.count === 'number') {
+      return data.count;
+    }
+    return 0;
+  } catch (error: any) {
+    console.error('[getReservedUsernamesCount] Error:', error);
+    return 0;
   }
 }

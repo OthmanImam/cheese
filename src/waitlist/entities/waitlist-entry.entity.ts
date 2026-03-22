@@ -45,17 +45,20 @@ export class WaitlistEntry {
   @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
   referralCode: string | null;
 
+  @Column({ type: 'int', default: 0 })
+  points: number;
+
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 
-  @Column({ name: 'notified_at', type: 'integer', transformer: {
-    from: (value: number) => value ? new Date(value) : null,
+  @Column({ name: 'notified_at', type: 'bigint', transformer: {
+    from: (value: number) => value ? new Date(parseInt(value as any, 10)) : null,
     to: (value: Date) => value ? value.getTime() : null,
   }, nullable: true })
   notifiedAt: Date | null;
 
-  @Column({ name: 'converted_at', type: 'integer', transformer: {
-    from: (value: number) => value ? new Date(value) : null,
+  @Column({ name: 'converted_at', type: 'bigint', transformer: {
+    from: (value: number) => value ? new Date(parseInt(value as any, 10)) : null,
     to: (value: Date) => value ? value.getTime() : null,
   }, nullable: true })
   convertedAt: Date | null;

@@ -37,7 +37,7 @@ export class WaitlistController {
 
   @Post('register')
   @Public()
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register for waitlist' })
   @ApiBody({
@@ -181,7 +181,7 @@ export class WaitlistController {
   })
   getWaitlistLeaderboard(@Query('limit') limit?: string) {
     const limitNum = limit ? parseInt(limit) : 100;
-    return this.leaderboardService.getWaitlistLeaderboard(limitNum);
+    return this.leaderboardService.getTopUsers(limitNum);
   }
 
   @Get('referral/:code')

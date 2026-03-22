@@ -8,7 +8,7 @@ import { ShareModal } from '@/components/sections/ShareModal';
 import Link from 'next/link';
 import { getLeaderboard, type LeaderboardEntry } from '@/lib/api';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:4000';
+const WS_URL = process.env.NEXT_PUBLIC_API_URL_WS || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-xl">🥇</span>;
@@ -35,15 +35,23 @@ export default function LeaderboardPage() {
   }, [data]);
 
   useEffect(() => {
-    const socket: Socket = io(`${WS_URL}/leaderboard`, {
-      transports: ['websocket', 'polling'],
-      reconnectionDelay: 3000,
-    });
-    socket.on('connect', () => setIsLive(true));
-    socket.on('disconnect', () => setIsLive(false));
-    socket.on('leaderboard:update', (data: LeaderboardEntry[]) => setEntries(data));
-    socket.emit('leaderboard:subscribe');
-    return () => { socket.disconnect(); };
+    let socket: Socket | null = null;
+    try {
+      socket = io(`${WS_URL.replace(/\/+$/, '')}/leaderboard`, {
+        transports: ['websocket', 'polling'],
+        reconnectionDelay: 3000,
+      });
+
+      socket.on('connect', () => setIsLive(true));
+      socket.on('disconnect', () => setIsLive(false));
+      socket.on('leaderboard:update', (data: LeaderboardEntry[]) => setEntries(data));
+      socket.emit('leaderboard:subscribe');
+    } catch (err) {
+      console.warn('[LeaderboardPage] socket init failed:', err);
+      setIsLive(false);
+    }
+
+    return () => { if (socket) socket.disconnect(); };
   }, []);
 
   return (

@@ -21,11 +21,11 @@ export class LeaderboardController {
   @Get('waitlist')
   getWaitlistLeaderboard(@Query('limit') limit?: string) {
     const limitNum = limit ? parseInt(limit) : 100;
-    return this.leaderboardService.getWaitlistLeaderboard(limitNum);
+    return this.leaderboardService.getTopUsers(limitNum);
   }
 
   @Get('waitlist/position')
   getWaitlistPosition(@Query('username') username: string) {
-    return this.leaderboardService.getWaitlistPosition(username);
+    return this.leaderboardService.getUserRank(username);
   }
 }

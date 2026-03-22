@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getReservedUsernamesCount } from '@/lib/api';
 
 const USERNAMES = [
   '@alex', '@sarah', '@david', '@maya', '@james', '@zara',
@@ -49,32 +50,31 @@ function TypewriterName(): JSX.Element {
 export function HeroSection() {
   const [displayCount, setDisplayCount] = useState(0);
   const [target, setTarget] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const fetchCount = async () => {
+    try {
+      const count = await getReservedUsernamesCount();
+
+      if (!Number.isFinite(count) || count < 0) {
+        throw new Error('Invalid count value from API');
+      }
+
+      setTarget(count);
+      setDisplayCount(0);
+      setErrorMessage(null);
+    } catch (error) {
+      console.error('Failed to fetch reserved usernames count:', error);
+      setTarget(0);
+      setErrorMessage('Could not load reserved usernames count.');
+    }
+  };
 
   useEffect(() => {
-    // Fetch the actual count from the backend endpoint
-    const fetchCount = async () => {
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
-        const response = await fetch(`${apiUrl}/waitlist/count`);
-        const data = await response.json();
-        // Handle different response formats
-        let count = 0;
-        if (typeof data === 'number') {
-          count = data;
-        } else if (data?.data) {
-          count = data.data;
-        } else if (data?.count) {
-          count = data.count;
-        }
-        setTarget(count);
-        setDisplayCount(0); // Reset display count for animation
-      } catch (error) {
-        console.error('Failed to fetch reserved usernames count:', error);
-        setTarget(0);
-      }
-    };
-
     fetchCount();
+
+    const interval = setInterval(fetchCount, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

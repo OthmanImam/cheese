@@ -85,14 +85,30 @@ export class AuthService {
       return this.createUserFromWaitlist(dto, waitlistEntry);
     }
 
-    // Brand new signup not from waitlist
-    return this.createNewUser(dto);
+    // Only waitlist users can sign up
+    throw new ForbiddenException('Signup is currently restricted to waitlist users only');
   }
 
   private async createUserFromWaitlist(
     dto: SignupDto,
     waitlistEntry: WaitlistEntry,
   ): Promise<{ userId: string; email: string }> {
+    // Check for email/phone/username conflicts before creating user
+    const phoneExists = await this.userRepo.findOne({
+      where: { phone: dto.phone },
+    });
+    if (phoneExists) throw new ConflictException('Phone already registered');
+
+    const usernameExists = await this.userRepo.findOne({
+      where: { username: dto.username },
+    });
+    if (usernameExists) throw new ConflictException('Username taken');
+
+    const emailExists = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
+    if (emailExists) throw new ConflictException('Email already registered');
+
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     // Create user
@@ -119,29 +135,62 @@ export class AuthService {
       // Don't block signup — wallet can be retried
     }
 
+    // Transfer points from waitlist entry to user
+    user.points = waitlistEntry.points;
+
     await this.userRepo.save(user);
 
     // Award referral points if referred by someone
     if (waitlistEntry.referrerId) {
       try {
-        await this.userRepo.increment(
-          { id: waitlistEntry.referrerId },
-          'points',
-          REFERRAL_POINTS,
-        );
+        // Check if referrer is a user or waitlist entry
+        const referrerUser = await this.userRepo.findOne({
+          where: { id: waitlistEntry.referrerId },
+        });
 
-        // Record the referral event
-        await this.referralEventRepo.save(
-          this.referralEventRepo.create({
-            referrerId: waitlistEntry.referrerId,
-            referredUserId: user.id,
-            pointsAwarded: REFERRAL_POINTS,
-          }),
-        );
+        if (referrerUser) {
+          // Referrer is a registered user
+          await this.userRepo.increment(
+            { id: waitlistEntry.referrerId },
+            'points',
+            REFERRAL_POINTS,
+          );
 
-        this.logger.log(
-          `Referral points awarded [referrer=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
-        );
+          // Record the referral event
+          await this.referralEventRepo.save(
+            this.referralEventRepo.create({
+              referrerUserId: waitlistEntry.referrerId,
+              referredUserId: user.id,
+              referredType: 'user',
+              pointsAwarded: REFERRAL_POINTS,
+            }),
+          );
+
+          this.logger.log(
+            `User referral points awarded [referrerUser=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
+          );
+        } else {
+          // Referrer is still in waitlist
+          await this.waitlistRepo.increment(
+            { id: waitlistEntry.referrerId },
+            'points',
+            REFERRAL_POINTS,
+          );
+
+          // Record the referral event
+          await this.referralEventRepo.save(
+            this.referralEventRepo.create({
+              referrerWaitlistId: waitlistEntry.referrerId,
+              referredUserId: user.id,
+              referredType: 'user',
+              pointsAwarded: REFERRAL_POINTS,
+            }),
+          );
+
+          this.logger.log(
+            `Waitlist-to-user referral points awarded [referrerWaitlist=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
+          );
+        }
       } catch (err) {
         this.logger.error(
           `Failed to award referral points: ${(err as Error).message}`,
