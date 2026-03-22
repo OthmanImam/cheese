@@ -9,12 +9,16 @@ export const redisProvider: Provider = {
   provide: REDIS_CLIENT,
   inject: [ConfigService],
   useFactory: (config: ConfigService) => {
-    const client = new Redis({
-      host: config.get('redis.host'),
-      port: config.get('redis.port'),
-      password: config.get('redis.password') || undefined,
-      lazyConnect: true,
-    });
+    const redisUrl = config.get<string>('redis.url');
+
+    const client = redisUrl
+      ? new Redis(redisUrl, { lazyConnect: true })
+      : new Redis({
+          host: config.get('redis.host'),
+          port: config.get('redis.port'),
+          password: config.get('redis.password') || undefined,
+          lazyConnect: true,
+        });
 
     client.on('error', (err) => {
       console.error('[Redis] Connection error:', err.message);
