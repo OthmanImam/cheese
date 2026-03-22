@@ -68,7 +68,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
-  controllers: [AppController], //
+  controllers: [AppController], 
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
