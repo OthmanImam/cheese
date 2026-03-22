@@ -9,10 +9,10 @@ export const appConfig = registerAs('app', () => ({
 }));
 
 export const dbConfig = registerAs('db', () => ({
-  host: process.env.DATABASE_URL,
-  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   name: process.env.DB_NAME,
-  user: process.env.DB_USERNAME,
+  user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 }));
 

@@ -106,7 +106,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
 
         return {
           type,
-          host: config.get('db.host'),
+          host: config.get('database.url'),
           port: config.get('db.port'),
           username: config.get('db.user'),
           password: config.get('db.password'),
