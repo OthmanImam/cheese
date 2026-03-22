@@ -158,7 +158,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
     AuthModule,
     DevicesModule,
     OtpModule,
-    BlockchainModule,
+    // BlockchainModule,
     // Phase 2 — uncomment when ready
     // WalletModule,
     // RatesModule,
