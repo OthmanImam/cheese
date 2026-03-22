@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateShareEvents170000000000000000002 implements MigrationInterface {
+export class CreateShareEvents17000000000000000000000002 implements MigrationInterface {
   name = 'CreateShareEvents1700000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
