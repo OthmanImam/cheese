@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddWaitlistFieldsToUsers1700000000001 implements MigrationInterface {
-  name = 'AddWaitlistFieldsToUsers1700000000001';
+export class InitialSchema1700000000000 implements MigrationInterface {
+  name = 'InitialSchema1700000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // referral_code — unique 8-char nanoid assigned at registration
