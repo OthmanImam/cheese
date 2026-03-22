@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const API_URL = process.env.API_URL || 'http://localhost:3001/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
 
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE,
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -75,9 +75,9 @@ export interface RankResponse {
 
 export async function registerWaitlist(payload: RegisterPayload): Promise<RegisterResponse> {
   try {
-    const { data } = await api.post<RegisterResponse>('/waitlist/register', payload);
+    const { data } = await api.post<any>('/waitlist/register', payload);
     console.log('Register response:', data);
-    return data;
+    return data?.data || data;
   } catch (error) {
     console.error('Register error:', error);
     throw error;
@@ -146,26 +146,61 @@ export async function checkUsername(username: string): Promise<UsernameCheckResp
 }
 
 export async function trackShare(payload: SharePayload): Promise<ShareResponse> {
-  const { data } = await api.post<ShareResponse>('/waitlist/share', payload);
-  return data;
+  try {
+    const { data } = await api.post<any>('/waitlist/share', payload);
+    return data?.data || data;
+  } catch (error: any) {
+    console.error('[trackShare] Error:', error);
+    throw error;
+  }
 }
 
 export async function getLeaderboard(): Promise<LeaderboardResponse> {
-  const { data } = await api.get<LeaderboardResponse>('/waitlist/leaderboard');
-  return data;
+  try {
+    const { data } = await api.get<any>('/waitlist/leaderboard');
+    // Handle wrapped response: { success: true, data: {...} }
+    const response = data?.data || data;
+    
+    if (response && typeof response === 'object') {
+      return {
+        entries: response.entries || [],
+        total: response.total || 0,
+      };
+    }
+    
+    return { entries: [], total: 0 };
+  } catch (error: any) {
+    console.error('[getLeaderboard] Error:', error);
+    return { entries: [], total: 0 };
+  }
 }
 
 export async function getReferralInfo(code: string) {
-  const { data } = await api.get(`/waitlist/referral/${code}`);
-  return data;
+  try {
+    const { data } = await api.get<any>(`/waitlist/referral/${code}`);
+    return data?.data || data;
+  } catch (error: any) {
+    console.error('[getReferralInfo] Error:', error);
+    throw error;
+  }
 }
 
 export async function getUserPoints(userId: string): Promise<PointsResponse> {
-  const { data } = await api.get<PointsResponse>(`/waitlist/points/${userId}`);
-  return data;
+  try {
+    const { data } = await api.get<any>(`/waitlist/points/${userId}`);
+    return data?.data || data;
+  } catch (error: any) {
+    console.error('[getUserPoints] Error:', error);
+    throw error;
+  }
 }
 
 export async function getUserRank(userId: string): Promise<RankResponse> {
-  const { data } = await api.get<RankResponse>(`/waitlist/leaderboard/rank/${userId}`);
-  return data;
+  try {
+    const { data } = await api.get<any>(`/waitlist/leaderboard/rank/${userId}`);
+    return data?.data || data;
+  } catch (error: any) {
+    console.error('[getUserRank] Error:', error);
+    throw error;
+  }
 }

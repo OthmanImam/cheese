@@ -106,7 +106,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
 
         return {
           type,
-          host: config.get('database.url'),
+          host: config.get('db.host'),
           port: config.get('db.port'),
           username: config.get('db.user'),
           password: config.get('db.password'),
@@ -132,7 +132,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
             BlockchainTransaction,
             // PaymentRequest,
           ],
-          synchronize: false,
+          synchronize: config.get('app.nodeEnv') !== 'production',
           logging: config.get('app.nodeEnv') === 'development',
           ssl:
             config.get('app.nodeEnv') === 'production'

@@ -54,7 +54,7 @@ export function HeroSection() {
     // Fetch the actual count from the backend endpoint
     const fetchCount = async () => {
       try {
-        const apiUrl = process.env.API_URL || 'http://localhost:3001/v1';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
         const response = await fetch(`${apiUrl}/waitlist/count`);
         const data = await response.json();
         // Handle different response formats

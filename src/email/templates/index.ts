@@ -1,7 +1,6 @@
 // src/email/templates/index.ts
 import {
   BRAND,
-  ICONS,
   baseLayout,
   goldDivider,
   primaryButton,
@@ -9,9 +8,6 @@ import {
   amountDisplay,
   detailRow,
   infoBox,
-  sectionLabel,
-  featureRow,
-  benefitRow,
 } from './base';
 
 // ─────────────────────────────────────────────────────────
@@ -21,22 +17,27 @@ export function waitlistConfirmation(params: {
   username: string;
   email: string;
   position?: number;
+  referralCode?: string;
 }): { subject: string; html: string } {
-  const subject = `@${params.username} is yours — Welcome to Cheese Wallet`;
+  const subject = `@${params.username} is yours — Welcome to Cheese Pay 🧀`;
   const html = baseLayout({
     preheader: `Your username @${params.username} has been reserved. You're among the first.`,
     body: `
+      <!-- Gold accent bar -->
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
+
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Early Access Reserved', ICONS.clock(BRAND.gold, 14))}
-
+        <!-- Hero -->
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          Early Access Reserved
+        </p>
         <h1 style="font-size:34px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;line-height:1.2;letter-spacing:-1px;margin-bottom:12px;">
           Welcome to the<br/>
           <span style="background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.goldLight});
                        -webkit-background-clip:text;-webkit-text-fill-color:transparent;">
-            CheesePay Waitlist.
+            Golden List.
           </span>
         </h1>
         <p style="font-size:16px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
@@ -50,28 +51,22 @@ export function waitlistConfirmation(params: {
           <tr>
             <td style="background:linear-gradient(135deg,${BRAND.surface},${BRAND.cardBg});
                        border:1px solid ${BRAND.gold}44;border-radius:16px;padding:28px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="padding-bottom:8px;">${ICONS.user(BRAND.gold, 28)}</td>
-                </tr>
-              </table>
               <p style="font-size:12px;letter-spacing:2px;color:${BRAND.textMuted};
                          text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:8px;">
                 Your Reserved Handle
               </p>
               <p style="font-size:32px;font-weight:700;color:${BRAND.gold};
-                         font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0 0 12px;">
+                         font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0;">
                 @${params.username}
               </p>
-              ${params.position ? `
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="vertical-align:middle;padding-right:6px;">${ICONS.trophy(BRAND.textMuted, 13)}</td>
-                  <td style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;vertical-align:middle;">
-                    You're <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong> on the waitlist
-                  </td>
-                </tr>
-              </table>` : ''}
+              ${
+                params.position
+                  ? `
+              <p style="font-size:13px;color:${BRAND.textMuted};margin-top:12px;font-family:'Inter',sans-serif;">
+                🏆 You're <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong> on the waitlist
+              </p>`
+                  : ''
+              }
             </td>
           </tr>
         </table>
@@ -82,11 +77,77 @@ export function waitlistConfirmation(params: {
           What to expect when we launch
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
-          ${featureRow(ICONS.dollar(), 'Keep you money in USDC', 'have your transactions in Naira')}
-          ${featureRow(ICONS.zap(), 'Instant NGN withdrawals', 'Send to any Nigerian bank in seconds')}
-          ${featureRow(ICONS.send(), 'Send money by username', 'Just @username. No account numbers')}
-          ${featureRow(ICONS.creditCard(), 'Virtual dollar card', 'Pay globally with your USDC balance')}
+          ${[
+            ['💵', 'Hold & earn on USDC', 'Up to 5% APY — no lock-ups'],
+            [
+              '⚡',
+              'Instant NGN withdrawals',
+              'Send to any Nigerian bank in seconds',
+            ],
+            [
+              '💳',
+              'Virtual dollar card',
+              'Pay globally with your USDC balance',
+            ],
+            [
+              '🚀',
+              'Send money by username',
+              'Just @username — no account numbers',
+            ],
+          ]
+            .map(
+              ([icon, title, desc]) => `
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td width="40" style="font-size:20px;vertical-align:top;padding-top:2px;">${icon}</td>
+                  <td>
+                    <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};
+                               font-family:'Inter',sans-serif;margin:0 0 2px;">${title}</p>
+                    <p style="font-size:13px;color:${BRAND.textMuted};
+                               font-family:'Inter',sans-serif;margin:0;">${desc}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`,
+            )
+            .join('')}
         </table>
+
+        ${
+          params.referralCode
+            ? `
+        <!-- Referral section -->
+        <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};
+                  font-family:'Inter',sans-serif;margin-bottom:16px;letter-spacing:-0.2px;">
+          Share & Earn Bonus Points
+        </p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:36px;">
+          <tr>
+            <td style="background:linear-gradient(135deg,${BRAND.surface},${BRAND.cardBg});
+                       border:1px solid ${BRAND.gold}44;border-radius:16px;padding:28px;">
+              <p style="font-size:12px;letter-spacing:2px;color:${BRAND.textMuted};
+                         text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:12px;">
+                Your Referral Code
+              </p>
+              <p style="font-size:24px;font-weight:700;color:${BRAND.gold};
+                         font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin-bottom:16px;">
+                ${params.referralCode}
+              </p>
+              <p style="font-size:14px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                        line-height:1.6;margin-bottom:16px;">
+                Share this code with friends and family. When they join using your code, you'll both earn bonus points and climb the leaderboard faster!
+              </p>
+              <p style="font-size:13px;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0;">
+                🎁 <strong>Referral bonuses:</strong> 50 points for you + 25 points for them
+              </p>
+            </td>
+          </tr>
+        </table>`
+            : ''
+        }
 
         ${infoBox(`We'll email you at <strong style="color:${BRAND.textLight};">${params.email}</strong> the moment we go live. Early reservers get priority access and exclusive launch bonuses.`)}
       </div>
@@ -96,21 +157,23 @@ export function waitlistConfirmation(params: {
 }
 
 // ─────────────────────────────────────────────────────────
-// 2. APP LAUNCH
+// 2. APP LAUNCH — goes to all waitlist members
 // ─────────────────────────────────────────────────────────
 export function appLaunch(params: { username: string; appUrl: string }): {
   subject: string;
   html: string;
 } {
-  const subject = `Cheese Pay is LIVE  @${params.username}, your turn.`;
+  const subject = `🚀 Cheese Wallet is LIVE — @${params.username}, your turn.`;
   const html = baseLayout({
-    preheader: 'The wait is over. Your wallet is ready. Claim your username now.',
+    preheader:
+      'The wait is over. Your wallet is ready. Claim your username now.',
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel("We're Live", ICONS.arrowUpRight(BRAND.gold, 14))}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          🚀 We're Live
+        </p>
         <h1 style="font-size:36px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;line-height:1.15;letter-spacing:-1.5px;margin-bottom:16px;">
           The wait is over,<br/>
@@ -126,38 +189,38 @@ export function appLaunch(params: { username: string; appUrl: string }): {
         </p>
 
         <div style="margin-bottom:36px;">
-          ${primaryButton('Claim @' + params.username + ' Now', params.appUrl)}
+          ${primaryButton('Claim @' + params.username + ' Now →', params.appUrl)}
         </div>
 
         <!-- Feature grid -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tr>
-            <td width="50%" style="padding:0 6px 12px 0;vertical-align:top;">
+            <td width="50%" style="padding:12px 8px 12px 0;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
-                <div style="margin-bottom:10px;">${ICONS.trendingUp(BRAND.gold, 20)}</div>
+                <p style="font-size:24px;margin:0 0 8px;">💰</p>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Earn 5% APY</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">On your USDC balance</p>
               </div>
             </td>
-            <td width="50%" style="padding:0 0 12px 6px;vertical-align:top;">
+            <td width="50%" style="padding:12px 0 12px 8px;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
-                <div style="margin-bottom:10px;">${ICONS.zap(BRAND.gold, 20)}</div>
+                <p style="font-size:24px;margin:0 0 8px;">⚡</p>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Instant Withdrawals</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">To any Nigerian bank</p>
               </div>
             </td>
           </tr>
           <tr>
-            <td width="50%" style="padding:0 6px 0 0;vertical-align:top;">
+            <td width="50%" style="padding:0 8px 0 0;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
-                <div style="margin-bottom:10px;">${ICONS.creditCard(BRAND.gold, 20)}</div>
+                <p style="font-size:24px;margin:0 0 8px;">💳</p>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Virtual Dollar Card</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">Shop globally, instantly</p>
               </div>
             </td>
-            <td width="50%" style="padding:0 0 0 6px;vertical-align:top;">
+            <td width="50%" style="padding:0 0 0 8px;vertical-align:top;">
               <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
-                <div style="margin-bottom:10px;">${ICONS.target(BRAND.gold, 20)}</div>
+                <p style="font-size:24px;margin:0 0 8px;">🎯</p>
                 <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 4px;">Send by Username</p>
                 <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">No account numbers needed</p>
               </div>
@@ -165,7 +228,7 @@ export function appLaunch(params: { username: string; appUrl: string }): {
           </tr>
         </table>
 
-        ${infoBox(`As an early reserver, your first 3 months of earn are at <strong style="color:${BRAND.gold};">boosted 6% APY</strong>. This offer expires 30 days after launch.`, 'success')}
+        ${infoBox('As an early reserver, your first 3 months of earn are at <strong style="color:' + BRAND.gold + ';">boosted 6% APY</strong>. This offer expires 30 days after launch.', 'success')}
       </div>
     `,
   });
@@ -186,12 +249,13 @@ export function signupOtp(params: {
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Verify Your Account', ICONS.lock(BRAND.gold, 14))}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          Verify Your Account
+        </p>
         <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;">
-          Hey ${params.fullName.split(' ')[0]}
+          Hey ${params.fullName.split(' ')[0]} 👋
         </h1>
         <p style="font-size:15px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
                   line-height:1.7;margin-bottom:36px;">
@@ -200,15 +264,10 @@ export function signupOtp(params: {
 
         <div style="margin-bottom:32px;">${otpBox(params.otp)}</div>
 
-        <!-- Expiry row -->
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 32px;">
-          <tr>
-            <td style="vertical-align:middle;padding-right:6px;">${ICONS.clock(BRAND.textMuted, 14)}</td>
-            <td style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;vertical-align:middle;">
-              This code expires in <strong style="color:${BRAND.textLight};">${params.expiresIn}</strong>
-            </td>
-          </tr>
-        </table>
+        <p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  text-align:center;margin-bottom:32px;">
+          ⏱&nbsp; This code expires in <strong style="color:${BRAND.textLight};">${params.expiresIn}</strong>
+        </p>
 
         ${goldDivider()}
 
@@ -229,21 +288,18 @@ export function signupSuccess(params: {
   username: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `Welcome to Cheese Wallet, @${params.username}`;
+  const subject = `Welcome to Cheese Wallet, @${params.username} 🧀`;
   const html = baseLayout({
     preheader: 'Your account is live. Fund your wallet and start earning.',
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
         <div style="text-align:center;margin-bottom:32px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 20px;">
-            <tr>
-              <td style="background:${BRAND.successGreen}20;border:1px solid ${BRAND.successGreen}44;
-                          border-radius:50%;width:72px;height:72px;text-align:center;vertical-align:middle;">
-                ${ICONS.checkCircle(BRAND.successGreen, 40)}
-              </td>
-            </tr>
-          </table>
+          <div style="display:inline-block;background:${BRAND.successGreen}20;border:1px solid ${BRAND.successGreen}44;
+                      border-radius:50%;width:72px;height:72px;line-height:72px;font-size:32px;text-align:center;
+                      margin:0 auto 20px;">
+            ✅
+          </div>
           <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                      font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:8px;">
             You're in, ${params.fullName.split(' ')[0]}!
@@ -258,7 +314,6 @@ export function signupSuccess(params: {
           <tr>
             <td style="background:linear-gradient(135deg,${BRAND.surface},${BRAND.cardBg});
                        border:1px solid ${BRAND.gold}44;border-radius:16px;padding:24px;text-align:center;">
-              <div style="margin-bottom:8px;">${ICONS.user(BRAND.gold, 24)}</div>
               <p style="font-size:12px;letter-spacing:2px;color:${BRAND.textMuted};
                          text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:6px;">Your Handle</p>
               <p style="font-size:28px;font-weight:700;color:${BRAND.gold};
@@ -274,25 +329,24 @@ export function signupSuccess(params: {
                   font-family:'Inter',sans-serif;margin-bottom:16px;">Get started in 3 steps</p>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           ${[
-            [ICONS.wallet(), 'Fund your wallet', 'Deposit USDC via Stellar network'],
-            [ICONS.trendingUp(), 'Start earning', 'Toggle Earn on to get 5% APY instantly'],
-            [ICONS.landmark(), 'Withdraw anytime', 'Send NGN directly to your bank account'],
-          ].map(([icon, title, desc], i) => `
+            ['1', 'Fund your wallet', 'Deposit USDC via Stellar network'],
+            ['2', 'Start earning', 'Toggle Earn on to get 5% APY instantly'],
+            ['3', 'Withdraw anytime', 'Send NGN directly to your bank account'],
+          ]
+            .map(
+              ([num, title, desc]) => `
           <tr>
             <td style="padding:12px 0;border-bottom:1px solid ${BRAND.border};">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td width="40" style="vertical-align:middle;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="width:28px;height:28px;border-radius:14px;
-                                    background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.gold});
-                                    text-align:center;vertical-align:middle;">
-                          <span style="font-size:13px;font-weight:700;color:${BRAND.black};
-                                       font-family:'Inter',sans-serif;line-height:28px;display:block;">${i + 1}</span>
-                        </td>
-                      </tr>
-                    </table>
+                    <div style="width:30px;height:30px;border-radius:50%;
+                                background:linear-gradient(135deg,${BRAND.goldDark},${BRAND.gold});
+                                display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:13px;font-weight:700;color:${BRAND.black};
+                                   font-family:'Inter',sans-serif;line-height:30px;
+                                   text-align:center;display:block;">${num}</span>
+                    </div>
                   </td>
                   <td style="padding-left:12px;">
                     <p style="font-size:14px;font-weight:600;color:${BRAND.textLight};
@@ -300,14 +354,15 @@ export function signupSuccess(params: {
                     <p style="font-size:13px;color:${BRAND.textMuted};
                                font-family:'Inter',sans-serif;margin:0;">${desc}</p>
                   </td>
-                  <td width="28" align="right">${icon}</td>
                 </tr>
               </table>
             </td>
-          </tr>`).join('')}
+          </tr>`,
+            )
+            .join('')}
         </table>
 
-        ${primaryButton('Open My Wallet', params.appUrl)}
+        ${primaryButton('Open My Wallet →', params.appUrl)}
       </div>
     `,
   });
@@ -329,9 +384,10 @@ export function passwordResetOtp(params: {
     body: `
       <div style="height:4px;background:linear-gradient(90deg,#EF4444,#F97316);"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Security', ICONS.shieldOff('#F97316', 14), '#F97316')}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:#F97316;
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          🔐 Security
+        </p>
         <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;">
           Password Reset
@@ -344,14 +400,10 @@ export function passwordResetOtp(params: {
 
         <div style="margin-bottom:32px;">${otpBox(params.otp)}</div>
 
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 32px;">
-          <tr>
-            <td style="vertical-align:middle;padding-right:6px;">${ICONS.clock(BRAND.textMuted, 14)}</td>
-            <td style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;vertical-align:middle;">
-              This code expires in <strong style="color:${BRAND.textLight};">${params.expiresIn}</strong>
-            </td>
-          </tr>
-        </table>
+        <p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;
+                  text-align:center;margin-bottom:32px;">
+          ⏱&nbsp; This code expires in <strong style="color:${BRAND.textLight};">${params.expiresIn}</strong>
+        </p>
 
         ${goldDivider()}
 
@@ -382,14 +434,7 @@ export function passwordChanged(params: {
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.successGreen}88,${BRAND.successGreen});"></div>
       <div style="padding:48px 40px 40px;">
         <div style="text-align:center;margin-bottom:32px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 16px;">
-            <tr>
-              <td style="background:${BRAND.gold}15;border:1px solid ${BRAND.gold}33;
-                          border-radius:50%;width:72px;height:72px;text-align:center;vertical-align:middle;">
-                ${ICONS.key(BRAND.gold, 40)}
-              </td>
-            </tr>
-          </table>
+          <p style="font-size:48px;margin:0 0 16px;">🔑</p>
           <h1 style="font-size:28px;font-weight:700;color:${BRAND.textPrimary};
                      font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:10px;">
             Password Updated
@@ -407,7 +452,7 @@ export function passwordChanged(params: {
           </tbody>
         </table>
 
-        ${infoBox(`If you did not make this change, your account may be compromised. Please contact support immediately at <a href="mailto:support@cheesewallet.app" style="color:${BRAND.gold};">support@cheesewallet.app</a>`, 'warning')}
+        ${infoBox('If you did not make this change, your account may be compromised. Please contact support immediately at <a href="mailto:support@cheesewallet.app" style="color:' + BRAND.gold + ';">support@cheesewallet.app</a>', 'warning')}
       </div>
     `,
   });
@@ -415,7 +460,7 @@ export function passwordChanged(params: {
 }
 
 // ─────────────────────────────────────────────────────────
-// 7. MONEY RECEIVED
+// 7. MONEY RECEIVED / ACCOUNT FUNDED
 // ─────────────────────────────────────────────────────────
 export function moneyReceived(params: {
   fullName: string;
@@ -425,15 +470,16 @@ export function moneyReceived(params: {
   network?: string;
   appUrl: string;
 }): { subject: string; html: string } {
-  const subject = `$${params.amountUsdc} USDC received — start spending`;
+  const subject = `💰 $${params.amountUsdc} USDC received — start spending`;
   const html = baseLayout({
     preheader: `$${params.amountUsdc} USDC has been credited to your Cheese Wallet.`,
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Money Received', ICONS.wallet(BRAND.gold, 14))}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          💰 Money Received
+        </p>
         <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;">
           Your wallet just got richer.
@@ -445,14 +491,18 @@ export function moneyReceived(params: {
 
         <div style="margin-bottom:32px;">${amountDisplay(params.amountUsdc, params.amountNgn)}</div>
 
-        ${params.txHash ? `
+        ${
+          params.txHash
+            ? `
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tbody>
             ${params.network ? detailRow('Network', params.network) : ''}
             ${detailRow('Transaction Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`)}
-            ${detailRow('Status', 'Confirmed', true)}
+            ${detailRow('Status', '✅ Confirmed', true)}
           </tbody>
-        </table>` : ''}
+        </table>`
+            : ''
+        }
 
         <!-- Suggestions -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
@@ -460,16 +510,33 @@ export function moneyReceived(params: {
             <td style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:12px;padding:20px;">
               <p style="font-size:13px;font-weight:600;color:${BRAND.textLight};
                          font-family:'Inter',sans-serif;margin:0 0 12px;">Put your money to work</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                ${featureRow(ICONS.trendingUp(), 'Earn 5% APY', 'Toggle Earn to grow your balance daily')}
-                ${featureRow(ICONS.creditCard(), 'Spend with card', 'Use your virtual Mastercard anywhere')}
-                ${featureRow(ICONS.landmark(), 'Withdraw to bank', 'Convert USDC to NGN instantly')}
-              </table>
+              ${[
+                ['📈', 'Earn 5% APY', 'Toggle Earn to grow your balance daily'],
+                [
+                  '💳',
+                  'Spend with card',
+                  'Use your virtual Mastercard anywhere',
+                ],
+                ['🏦', 'Withdraw to bank', 'Convert USDC to NGN instantly'],
+              ]
+                .map(
+                  ([icon, title, desc]) => `
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
+                <tr>
+                  <td width="36" style="font-size:18px;vertical-align:middle;">${icon}</td>
+                  <td>
+                    <p style="font-size:13px;font-weight:600;color:${BRAND.textLight};font-family:'Inter',sans-serif;margin:0 0 2px;">${title}</p>
+                    <p style="font-size:12px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">${desc}</p>
+                  </td>
+                </tr>
+              </table>`,
+                )
+                .join('')}
             </td>
           </tr>
         </table>
 
-        ${primaryButton('Start Spending', params.appUrl)}
+        ${primaryButton('Start Spending →', params.appUrl)}
       </div>
     `,
   });
@@ -500,9 +567,10 @@ export function moneySent(params: {
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Money Sent', ICONS.send(BRAND.gold, 14))}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          ↗ Money Sent
+        </p>
         <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;">
           Transfer complete.
@@ -521,11 +589,11 @@ export function moneySent(params: {
             ${detailRow('Network Fee', `$${params.fee} USDC`)}
             ${detailRow('Reference', params.reference)}
             ${params.txHash ? detailRow('Tx Hash', `${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}`) : ''}
-            ${detailRow('Status', 'Confirmed', true)}
+            ${detailRow('Status', '✅ Confirmed', true)}
           </tbody>
         </table>
 
-        ${primaryButton('View Transaction', `${params.appUrl}/history`)}
+        ${primaryButton('View Transaction →', `${params.appUrl}/history`)}
       </div>
     `,
   });
@@ -541,22 +609,18 @@ export function kycApproved(params: {
   appUrl: string;
   benefits: string[];
 }): { subject: string; html: string } {
-  const subject = `Identity verified — your ${params.tier} account is unlocked`;
+  const subject = `🎉 Identity verified — your ${params.tier} account is unlocked`;
   const html = baseLayout({
     preheader: `KYC approved! Your ${params.tier} tier is now fully active.`,
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.successGreen}88,${BRAND.successGreen});"></div>
       <div style="padding:48px 40px 40px;">
         <div style="text-align:center;margin-bottom:32px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 16px;">
-            <tr>
-              <td style="background:${BRAND.successGreen}20;border:1px solid ${BRAND.successGreen}44;
-                          border-radius:50%;width:80px;height:80px;text-align:center;vertical-align:middle;">
-                ${ICONS.gift(BRAND.successGreen, 44)}
-              </td>
-            </tr>
-          </table>
-          ${sectionLabel('Identity Verified', ICONS.check(BRAND.successGreen, 14), BRAND.successGreen)}
+          <p style="font-size:56px;margin:0 0 16px;">🎉</p>
+          <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.successGreen};
+                    text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:12px;">
+            Identity Verified
+          </p>
           <h1 style="font-size:30px;font-weight:700;color:${BRAND.textPrimary};
                      font-family:'Inter',sans-serif;letter-spacing:-0.8px;margin-bottom:12px;">
             Welcome to ${params.tier} Tier
@@ -572,19 +636,25 @@ export function kycApproved(params: {
           style="background:${BRAND.surface};border:1px solid ${BRAND.gold}33;border-radius:16px;
                  padding:24px;margin-bottom:32px;">
           <tr><td>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+            <p style="font-size:12px;letter-spacing:2px;color:${BRAND.gold};
+                       text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 16px;">
+              Your ${params.tier} Benefits
+            </p>
+            ${params.benefits
+              .map(
+                (b) => `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
               <tr>
-                <td style="vertical-align:middle;padding-right:8px;">${ICONS.star(BRAND.gold, 14)}</td>
-                <td style="font-size:12px;letter-spacing:2px;color:${BRAND.gold};text-transform:uppercase;font-family:'Inter',sans-serif;vertical-align:middle;">
-                  Your ${params.tier} Benefits
-                </td>
+                <td width="24" style="color:${BRAND.successGreen};font-size:16px;vertical-align:top;">✓</td>
+                <td style="font-size:14px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${b}</td>
               </tr>
-            </table>
-            ${params.benefits.map((b) => benefitRow(b)).join('')}
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
-        ${primaryButton('Explore Your Account', params.appUrl)}
+        ${primaryButton('Explore Your Account →', params.appUrl)}
       </div>
     `,
   });
@@ -607,40 +677,30 @@ export function tierUpgrade(params: {
     black: '#F5F5F5',
   };
   const color = tierColors[params.toTier.toLowerCase()] || BRAND.gold;
-  const subject = `You've been upgraded to ${params.toTier} tier`;
+  const subject = `⬆️ You've been upgraded to ${params.toTier} tier`;
   const html = baseLayout({
     preheader: `Congratulations! You've unlocked ${params.toTier} — higher limits, more power.`,
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${color}88,${color});"></div>
       <div style="padding:48px 40px 40px;">
-
         <!-- Tier upgrade visual -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tr>
             <td style="text-align:center;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
                 <tr>
-                  <td style="background:${BRAND.surface};border:1px solid ${BRAND.border};
-                              border-radius:10px;padding:10px 20px;">
-                    <span style="font-size:14px;font-weight:600;color:${BRAND.textMuted};
-                                 font-family:'Inter',sans-serif;">${params.fromTier}</span>
-                  </td>
-                  <td style="padding:0 12px;">
-                    ${ICONS.arrowRight(color, 18)}
-                  </td>
-                  <td style="background:${color}20;border:1px solid ${color}66;
-                              border-radius:10px;padding:10px 20px;">
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="vertical-align:middle;">
-                          <span style="font-size:14px;font-weight:700;color:${color};
-                                       font-family:'Inter',sans-serif;">${params.toTier}</span>
-                        </td>
-                        <td style="vertical-align:middle;padding-left:6px;">
-                          ${ICONS.star(color, 12)}
-                        </td>
-                      </tr>
-                    </table>
+                  <td style="text-align:center;vertical-align:middle;">
+                    <div style="display:inline-block;background:${BRAND.surface};border:1px solid ${BRAND.border};
+                                border-radius:10px;padding:10px 20px;">
+                      <span style="font-size:14px;font-weight:600;color:${BRAND.textMuted};
+                                   font-family:'Inter',sans-serif;">${params.fromTier}</span>
+                    </div>
+                    <span style="font-size:20px;color:${color};padding:0 12px;">→</span>
+                    <div style="display:inline-block;background:${color}20;border:1px solid ${color}66;
+                                border-radius:10px;padding:10px 20px;">
+                      <span style="font-size:14px;font-weight:700;color:${color};
+                                   font-family:'Inter',sans-serif;">${params.toTier} ✦</span>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -667,19 +727,25 @@ export function tierUpgrade(params: {
           style="background:${BRAND.surface};border:1px solid ${color}33;border-radius:16px;
                  padding:24px;margin-bottom:32px;">
           <tr><td>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;">
+            <p style="font-size:12px;letter-spacing:2px;color:${color};
+                       text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 16px;">
+              ${params.toTier} Unlocks
+            </p>
+            ${params.benefits
+              .map(
+                (b) => `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
               <tr>
-                <td style="vertical-align:middle;padding-right:8px;">${ICONS.star(color, 14)}</td>
-                <td style="font-size:12px;letter-spacing:2px;color:${color};text-transform:uppercase;font-family:'Inter',sans-serif;vertical-align:middle;">
-                  ${params.toTier} Unlocks
-                </td>
+                <td width="24" style="color:${color};font-size:16px;vertical-align:top;">✦</td>
+                <td style="font-size:14px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${b}</td>
               </tr>
-            </table>
-            ${params.benefits.map((b) => benefitRow(b, color)).join('')}
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
-        ${primaryButton(`Explore ${params.toTier} Features`, params.appUrl)}
+        ${primaryButton(`Explore ${params.toTier} Features →`, params.appUrl)}
       </div>
     `,
   });
@@ -687,7 +753,7 @@ export function tierUpgrade(params: {
 }
 
 // ─────────────────────────────────────────────────────────
-// 11. WAITLIST REMINDER
+// 11. WAITLIST REMINDER — claim your username
 // ─────────────────────────────────────────────────────────
 export function waitlistReminder(params: {
   username: string;
@@ -702,9 +768,10 @@ export function waitlistReminder(params: {
     body: `
       <div style="height:4px;background:linear-gradient(90deg,${BRAND.goldDark},${BRAND.gold},${BRAND.goldLight});"></div>
       <div style="padding:48px 40px 40px;">
-
-        ${sectionLabel('Gentle Reminder', ICONS.hourglass(BRAND.gold, 13))}
-
+        <p style="font-size:13px;font-weight:600;letter-spacing:3px;color:${BRAND.gold};
+                  text-transform:uppercase;font-family:'Inter',sans-serif;margin-bottom:20px;">
+          ⏳ Gentle Reminder
+        </p>
         <h1 style="font-size:32px;font-weight:700;color:${BRAND.textPrimary};
                    font-family:'Inter',sans-serif;line-height:1.2;letter-spacing:-1px;margin-bottom:12px;">
           Your username is<br/>
@@ -724,11 +791,10 @@ export function waitlistReminder(params: {
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:32px;">
           <tr>
             <td style="background:linear-gradient(135deg,${BRAND.surface},${BRAND.cardBg});
-                       border:1px solid ${BRAND.gold}55;border-radius:16px;padding:28px;">
+                       border:1px solid ${BRAND.gold}55;border-radius:16px;padding:28px;position:relative;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td>
-                    <div style="margin-bottom:6px;">${ICONS.user(BRAND.gold, 24)}</div>
                     <p style="font-size:12px;letter-spacing:2px;color:${BRAND.textMuted};
                                text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 6px;">
                       Reserved For You
@@ -737,19 +803,17 @@ export function waitlistReminder(params: {
                                font-family:'Inter',sans-serif;letter-spacing:-0.5px;margin:0 0 8px;">
                       @${params.username}
                     </p>
-                    ${params.position ? `
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="vertical-align:middle;padding-right:6px;">${ICONS.trophy(BRAND.textMuted, 13)}</td>
-                        <td style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;vertical-align:middle;">
-                          Waitlist position <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong>
-                        </td>
-                      </tr>
-                    </table>` : ''}
+                    ${
+                      params.position
+                        ? `<p style="font-size:13px;color:${BRAND.textMuted};font-family:'Inter',sans-serif;margin:0;">
+                      🏆 Waitlist position <strong style="color:${BRAND.textLight};">#${params.position.toLocaleString()}</strong>
+                    </p>`
+                        : ''
+                    }
                   </td>
                   <td align="right" style="vertical-align:top;">
                     <div style="background:#F59E0B20;border:1px solid #F59E0B44;border-radius:8px;
-                                padding:8px 14px;">
+                                padding:8px 14px;display:inline-block;">
                       <span style="font-size:12px;font-weight:600;color:#F59E0B;
                                    font-family:'Inter',sans-serif;">Unclaimed</span>
                     </div>
@@ -760,7 +824,8 @@ export function waitlistReminder(params: {
           </tr>
         </table>
 
-        <div style="margin-bottom:32px;">${primaryButton('Claim @' + params.username, params.signupUrl)}</div>
+        <!-- CTA -->
+        <div style="margin-bottom:32px;">${primaryButton('Claim @' + params.username + ' →', params.signupUrl)}</div>
 
         <!-- What you get -->
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
@@ -771,12 +836,22 @@ export function waitlistReminder(params: {
                        text-transform:uppercase;font-family:'Inter',sans-serif;margin:0 0 14px;">
               Waiting inside your wallet
             </p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-              ${featureRow(ICONS.zap(), 'Instant NGN withdrawals to any bank', '')}
-              ${featureRow(ICONS.trendingUp(), '5% APY on your USDC — earn while you sleep', '')}
-              ${featureRow(ICONS.creditCard(), 'Virtual Mastercard for global spending', '')}
-              ${featureRow(ICONS.star(), 'Early-reserver bonuses expire soon', '')}
-            </table>
+            ${[
+              ['⚡', 'Instant NGN withdrawals to any bank'],
+              ['💰', '5% APY on your USDC — earn while you sleep'],
+              ['💳', 'Virtual Mastercard for global spending'],
+              ['🎁', 'Early-reserver bonuses expire soon'],
+            ]
+              .map(
+                ([icon, text]) => `
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:8px;">
+              <tr>
+                <td width="28" style="font-size:16px;vertical-align:middle;">${icon}</td>
+                <td style="font-size:13px;color:${BRAND.textLight};font-family:'Inter',sans-serif;">${text}</td>
+              </tr>
+            </table>`,
+              )
+              .join('')}
           </td></tr>
         </table>
 
