@@ -1,5 +1,6 @@
 // src/app.module.ts — ALL PHASES (1-7)
 import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -67,6 +68,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
+  controllers: [AppController], //
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
