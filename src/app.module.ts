@@ -71,9 +71,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
       ],
       envFilePath: ['.env'],
     }),
-
     ScheduleModule.forRoot(),
-
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [
@@ -83,8 +81,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
         },
       ],
     }),
-
-    // Only load BullModule if Redis is configured
+    // BullMQ — supports both REDIS_URL and REDIS_HOST
     ...(process.env.REDIS_URL || process.env.REDIS_HOST
       ? [
           BullModule.forRootAsync({
@@ -96,15 +93,14 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
                   ? { url: redisUrl }
                   : {
                       host: config.get('redis.host'),
-                      port: config.get<number>('redis.port') || 6379,
-                      password: config.get('redis.password') || undefined,
+                      port: config.get('redis.port', 6379),
+                      password: config.get('redis.password'),
                     },
               };
             },
           }),
         ]
       : []),
-
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
@@ -113,7 +109,7 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
         return {
           type: usePostgres ? 'postgres' : 'sqlite',
           host: config.get('db.host'),
-          port: config.get<number>('db.port') || 5432,
+          port: config.get('db.port'),
           username: config.get('db.user'),
           password: config.get('db.pass'),
           database: usePostgres
@@ -126,15 +122,16 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
             Otp,
             Transaction,
             ExchangeRate,
-            // BankTransfer,
-            // VirtualCard,
-            // Notification,
-            // Referral,
             ShareEvent,
             ReferralEvent,
             WaitlistEntry,
             BlockchainWallet,
             BlockchainTransaction,
+            // Add these back when their modules are uncommented:
+            // BankTransfer,
+            // VirtualCard,
+            // Notification,
+            // Referral,
             // PaymentRequest,
           ],
           synchronize: false,
@@ -152,29 +149,20 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
     DevicesModule,
     OtpModule,
     BlockchainModule,
-
     // Phase 2
     WalletModule,
     RatesModule,
     TransactionsModule,
-
     // Phase 3
     // SendModule,
-
     // Phase 4
     // BanksModule,
-
     // Phase 5
     // CardsModule,
-
     // Phase 6
-    // NotificationsModule,
-    // ProfileModule,
-
+    // NotificationsModule, ProfileModule,
     // Phase 7
-    // EarnModule,
-    // ReferralModule,
-
+    // EarnModule, ReferralModule,
     // Email + Waitlist + PayLink
     EmailModule,
     WaitlistModule,
