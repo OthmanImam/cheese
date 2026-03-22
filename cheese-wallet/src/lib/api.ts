@@ -158,7 +158,7 @@ export async function trackShare(payload: SharePayload): Promise<ShareResponse> 
 
 export async function getLeaderboard(): Promise<LeaderboardResponse> {
   try {
-    const { data } = await api.get<any>('/waitlist/leaderboard');
+    const { data } = await api.get<any>('/leaderboard/waitlist');
     // Handle wrapped response: { success: true, data: {...} }
     const response = data?.data || data;
 
