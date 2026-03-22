@@ -137,7 +137,7 @@ import { Transaction } from './transactions/entities/transaction.entity';
             BlockchainTransaction,
             // Uncomment as you re-enable each module:
             Transaction,
-            // ExchangeRate,
+            ExchangeRate,
             // BankTransfer,
             // VirtualCard,
             // Notification,
