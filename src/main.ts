@@ -29,6 +29,7 @@ async function bootstrap() {
     `http://localhost:${port}`,
     'https://cheesepay.xyz',
     'https://www.cheesepay.xyz',
+    /https:\/\/.*\.vercel\.app$/,  // allows all vercel preview URLs
   ].filter(Boolean);
 
   app.enableCors({
