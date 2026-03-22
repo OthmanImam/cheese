@@ -16,7 +16,7 @@ export function LeaderboardPreview() {
 
   const [showShare, setShowShare] = useState(false);
 
-  const top5 = data?.entries?.slice(0, 5) || [];
+  const top5 = Array.isArray(data?.entries) ? data.entries.slice(0, 5) : [];
 
   return (
     <section className="px-6 py-16 max-w-lg mx-auto">

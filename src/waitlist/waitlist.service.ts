@@ -13,7 +13,7 @@ import { Queue } from 'bullmq';
 import { nanoid } from 'nanoid';
 import { User } from '../auth/entities/user.entity';
 import { ShareEvent, SharePlatform, PLATFORM_POINTS } from './entities/share-event.entity';
-import { ReferralEvent } from './entities/referral-event.entity';
+import { ReferralEvent, REFERRAL_POINTS } from './entities/referral-event.entity';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto, ShareDto } from './dto/waitlist.dto';
@@ -90,11 +90,25 @@ export class WaitlistService {
       });
       if (userWithUsername) throw new ConflictException('This username is already taken');
 
-      let referrer: User | null = null;
+      let referrerUser: User | null = null;
+      let referrerWaitlist: WaitlistEntry | null = null;
+      let referrerType: 'user' | 'waitlist' = 'user';
+
       if (referralCode) {
-        referrer = await queryRunner.manager.findOne(User, {
+        // First check if referral code belongs to a registered user
+        referrerUser = await queryRunner.manager.findOne(User, {
           where: { referralCode },
         });
+
+        if (!referrerUser) {
+          // If not a user, check if it's a waitlist entry
+          referrerWaitlist = await queryRunner.manager.findOne(WaitlistEntry, {
+            where: { referralCode },
+          });
+          if (referrerWaitlist) {
+            referrerType = 'waitlist';
+          }
+        }
         // Silently ignore invalid referral codes — don't block registration
       }
 
@@ -108,15 +122,59 @@ export class WaitlistService {
           username,
           status: WaitlistStatus.PENDING,
           referralSource: referralCode || null,
-          referrerId: referrer?.id || null,
+          referrerId: referrerUser?.id || referrerWaitlist?.id || null,
           referralCode: nanoid(8),
           ipAddress,
           position,
         }),
       );
 
-      // NOTE: Referral points are awarded during signup, not waitlist registration
-      // This prevents double-counting and ensures points are only given for actual conversions
+      // Award referral points immediately when joining waitlist
+      if (referrerUser) {
+        // Award points to registered user
+        await queryRunner.manager.increment(
+          User,
+          { id: referrerUser.id },
+          'points',
+          REFERRAL_POINTS,
+        );
+
+        // Record the referral event
+        await queryRunner.manager.save(
+          queryRunner.manager.create(ReferralEvent, {
+            referrerUserId: referrerUser.id,
+            referredWaitlistId: newWaitlistEntry.id,
+            referredType: 'waitlist',
+            pointsAwarded: REFERRAL_POINTS,
+          }),
+        );
+
+        this.logger.log(
+          `Waitlist referral points awarded [referrerUser=${referrerUser.id}] [newWaitlist=${newWaitlistEntry.id}] [points=${REFERRAL_POINTS}]`,
+        );
+      } else if (referrerWaitlist) {
+        // Award points to waitlist user
+        await queryRunner.manager.increment(
+          WaitlistEntry,
+          { id: referrerWaitlist.id },
+          'points',
+          REFERRAL_POINTS,
+        );
+
+        // Record the referral event
+        await queryRunner.manager.save(
+          queryRunner.manager.create(ReferralEvent, {
+            referrerWaitlistId: referrerWaitlist.id,
+            referredWaitlistId: newWaitlistEntry.id,
+            referredType: 'waitlist',
+            pointsAwarded: REFERRAL_POINTS,
+          }),
+        );
+
+        this.logger.log(
+          `Waitlist-to-waitlist referral points awarded [referrerWaitlist=${referrerWaitlist.id}] [newWaitlist=${newWaitlistEntry.id}] [points=${REFERRAL_POINTS}]`,
+        );
+      }
 
       await queryRunner.commitTransaction();
 
@@ -144,7 +202,7 @@ export class WaitlistService {
           email: newWaitlistEntry.email,
           username: newWaitlistEntry.username,
           referralCode: newWaitlistEntry.referralCode,
-          points: 0, // New users start with 0 points
+          points: newWaitlistEntry.points, // Return actual points (may include referral bonuses)
           createdAt: newWaitlistEntry.createdAt.toISOString(),
         },
         referralLink,
@@ -261,12 +319,25 @@ export class WaitlistService {
   // ── Referral Info ─────────────────────────────────────────────────────────
 
   async getReferralInfo(code: string) {
+    // First check registered users
     const user = await this.userRepo.findOne({
       where: { referralCode: code },
       select: ['id', 'username', 'referralCode'],
     });
-    if (!user) throw new NotFoundException('Referral code not found');
-    return { valid: true, referrerUsername: user.username, referralCode: user.referralCode };
+    if (user) {
+      return { valid: true, referrerUsername: user.username, referralCode: user.referralCode };
+    }
+
+    // Then check waitlist entries
+    const waitlistEntry = await this.entryRepo.findOne({
+      where: { referralCode: code },
+      select: ['id', 'username', 'referralCode'],
+    });
+    if (waitlistEntry) {
+      return { valid: true, referrerUsername: waitlistEntry.username, referralCode: waitlistEntry.referralCode };
+    }
+
+    throw new NotFoundException('Referral code not found');
   }
 
   // ── User Points ───────────────────────────────────────────────────────────
@@ -289,7 +360,12 @@ export class WaitlistService {
     if (!user) throw new NotFoundException('User not found');
 
     const shareCount = await this.shareRepo.count({ where: { userId, verified: true } });
-    const referralCount = await this.referralRepo.count({ where: { referrerId: userId } });
+    const referralCount = await this.referralRepo.count({ 
+      where: [
+        { referrerUserId: userId },
+        { referrerWaitlistId: userId }
+      ]
+    });
 
     return {
       points: user.points,

@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-const API_URL = process.env.API_URL || 'http://localhost:3001/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
 
 export default function WaitlistForm() {
   const router = useRouter();

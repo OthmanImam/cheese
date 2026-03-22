@@ -14,66 +14,94 @@ export class LeaderboardService {
   ) {}
 
   async getTopUsers(limit: number = 100) {
+    // Get users with points
     const users = await this.userRepo
       .createQueryBuilder('user')
       .select(['user.username', 'user.points', 'user.createdAt'])
-      .where('user.points > 0')
+      .where('user.points > 0 AND user.isFlagged = false')
       .orderBy('user.points', 'DESC')
       .addOrderBy('user.createdAt', 'ASC')
       .limit(limit)
       .getMany();
-    
-    return users.map(u => ({
-      username: u.username,
-      points: u.points,
-      createdAt: u.createdAt,
+
+    // Get waitlist entries with points
+    const waitlistEntries = await this.waitlistRepo
+      .createQueryBuilder('waitlist')
+      .select(['waitlist.username', 'waitlist.points', 'waitlist.createdAt'])
+      .where('waitlist.points > 0')
+      .orderBy('waitlist.points', 'DESC')
+      .addOrderBy('waitlist.createdAt', 'ASC')
+      .limit(limit)
+      .getMany();
+
+    // Combine and sort all entries
+    const allEntries = [
+      ...users.map(u => ({ username: u.username, points: u.points, createdAt: u.createdAt, isUser: true })),
+      ...waitlistEntries.map(w => ({ username: w.username, points: w.points, createdAt: w.createdAt, isUser: false })),
+    ];
+
+    // Sort by points descending, then by creation date ascending
+    allEntries.sort((a, b) => {
+      if (a.points !== b.points) {
+        return b.points - a.points;
+      }
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+
+    return allEntries.slice(0, limit).map(entry => ({
+      username: entry.username,
+      points: entry.points,
+      createdAt: entry.createdAt,
     }));
   }
 
   async getUserRank(username: string) {
-    const user = await this.userRepo.findOne({
+    // First check if it's a registered user
+    let user = await this.userRepo.findOne({
       where: { username },
-      select: ['id', 'points', 'createdAt'],
+      select: ['id', 'points', 'createdAt', 'isFlagged'],
     });
+
+    let isWaitlistUser = false;
+    if (!user) {
+      // Check if it's a waitlist user
+      const waitlistEntry = await this.waitlistRepo.findOne({
+        where: { username },
+        select: ['id', 'points', 'createdAt'],
+      });
+      if (waitlistEntry) {
+        user = waitlistEntry as any; // Type compatibility
+        isWaitlistUser = true;
+      }
+    }
+
     if (!user) return null;
 
-    const higherCount = await this.userRepo
+    // Skip flagged users
+    if (!isWaitlistUser && (user as any).isFlagged) return null;
+
+    // Count users/waitlist entries with higher points
+    const userHigherCount = await this.userRepo
       .createQueryBuilder('u')
       .where('u.points > :points', { points: user.points })
       .orWhere('u.points = :points AND u.createdAt < :createdAt', {
         points: user.points,
         createdAt: user.createdAt,
       })
+      .andWhere('u.isFlagged = false')
+      .getCount();
+
+    const waitlistHigherCount = await this.waitlistRepo
+      .createQueryBuilder('w')
+      .where('w.points > :points', { points: user.points })
+      .orWhere('w.points = :points AND w.createdAt < :createdAt', {
+        points: user.points,
+        createdAt: user.createdAt,
+      })
       .getCount();
 
     return {
-      rank: higherCount + 1,
-      points: user.points,
-      username,
+      rank: userHigherCount + waitlistHigherCount + 1,
     };
-  }
-
-  async getWaitlistLeaderboard(limit: number = 100) {
-    const entries = await this.userRepo.manager
-      .createQueryBuilder(WaitlistEntry, 'entry')
-      .select(['entry.username', 'entry.position', 'entry.createdAt'])
-      .where('entry.position IS NOT NULL')
-      .orderBy('entry.position', 'ASC')
-      .limit(limit)
-      .getMany();
-
-    return entries.map(e => ({
-      username: e.username,
-      position: e.position,
-      createdAt: e.createdAt,
-    }));
-  }
-
-  async getWaitlistPosition(username: string) {
-    const entry = await this.waitlistRepo.findOne({
-      where: { username },
-      select: ['position'],
-    });
-    return entry?.position || null;
   }
 }
