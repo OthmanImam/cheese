@@ -59,7 +59,7 @@ import { BlockchainWallet } from './blockchain/entities/blockchain-wallet.entity
 import { BlockchainTransaction } from './blockchain/entities/blockchain-transaction.entity';
 // Inactive entities — uncomment when their modules are re-enabled
 import { Transaction } from './transactions/entities/transaction.entity';
-// import { ExchangeRate } from './rates/entities/exchange-rate.entity';
+import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 // import { BankTransfer } from './banks/entities/bank-transfer.entity';
 // import { VirtualCard } from './cards/entities/virtual-card.entity';
 // import { Notification } from './notifications/entities/notification.entity';
