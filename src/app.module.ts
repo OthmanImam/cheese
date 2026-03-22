@@ -69,10 +69,11 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
         ratesConfig,
         emailConfig,
       ],
-      // email config now properly loaded
       envFilePath: ['.env'],
     }),
+
     ScheduleModule.forRoot(),
+
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [
@@ -82,37 +83,42 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
         },
       ],
     }),
+
     // Only load BullModule if Redis is configured
-    ...(process.env.REDIS_HOST
+    ...(process.env.REDIS_URL || process.env.REDIS_HOST
       ? [
           BullModule.forRootAsync({
             inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-              connection: {
-                host: config.get('redis.host'),
-                port: config.get('redis.port', 6379),
-                password: config.get('redis.password'),
-              },
-            }),
+            useFactory: (config: ConfigService) => {
+              const redisUrl = config.get<string>('redis.url');
+              return {
+                connection: redisUrl
+                  ? { url: redisUrl }
+                  : {
+                      host: config.get('redis.host'),
+                      port: config.get<number>('redis.port') || 6379,
+                      password: config.get('redis.password') || undefined,
+                    },
+              };
+            },
           }),
         ]
       : []),
+
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        // choose postgres if DB_HOST or DATABASE_URL provided, otherwise fall back to sqlite
-        const usePostgres = !!config.get('db.host') || !!config.get('DATABASE_URL');
-        const type = usePostgres ? 'postgres' : 'sqlite';
+        const usePostgres = !!config.get('db.host');
 
         return {
-          type,
-          host: config.get('database.url'),
-          port: config.get('db.port'),
+          type: usePostgres ? 'postgres' : 'sqlite',
+          host: config.get('db.host'),
+          port: config.get<number>('db.port') || 5432,
           username: config.get('db.user'),
-          password: config.get('db.password'),
+          password: config.get('db.pass'),
           database: usePostgres
             ? config.get('db.name')
-            : (config.get('db.name') + '.db'),
+            : config.get('db.name') + '.db',
           entities: [
             User,
             RefreshToken,
@@ -123,7 +129,6 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
             // BankTransfer,
             // VirtualCard,
             // Notification,
-            // EarnPosition,
             // Referral,
             ShareEvent,
             ReferralEvent,
@@ -141,21 +146,35 @@ import { BlockchainTransaction } from './blockchain/entities/blockchain-transact
         } as any;
       },
     }),
+
     // Phase 1
     AuthModule,
-    DevicesModule, OtpModule, BlockchainModule,
+    DevicesModule,
+    OtpModule,
+    BlockchainModule,
+
     // Phase 2
-    WalletModule, RatesModule, TransactionsModule,
+    WalletModule,
+    RatesModule,
+    TransactionsModule,
+
     // Phase 3
     // SendModule,
+
     // Phase 4
     // BanksModule,
+
     // Phase 5
     // CardsModule,
+
     // Phase 6
-    // NotificationsModule, ProfileModule,
+    // NotificationsModule,
+    // ProfileModule,
+
     // Phase 7
-    // EarnModule, ReferralModule,
+    // EarnModule,
+    // ReferralModule,
+
     // Email + Waitlist + PayLink
     EmailModule,
     WaitlistModule,

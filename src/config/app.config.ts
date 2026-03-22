@@ -17,11 +17,11 @@ export const appConfig = registerAs('app', () => ({
 // }));
 
 export const dbConfig = registerAs('db', () => ({
-  host: process.env.DB_HOST,      // ← matches Railway
+  host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
-  name: process.env.DB_NAME,      // ← matches Railway
-  user: process.env.DB_USER,      // ← matches Railway
-  password: process.env.DB_PASS,  // ← matches Railway
+  name: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  pass: process.env.DB_PASS,   // ← make sure this is 'pass' not 'password'
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({
