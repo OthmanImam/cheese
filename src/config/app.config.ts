@@ -9,11 +9,11 @@ export const appConfig = registerAs('app', () => ({
 }));
 
 export const dbConfig = registerAs('db', () => ({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  name: process.env.DB_NAME || 'cheese_wallet',
-  user: process.env.DB_USER || 'cheese',
-  password: process.env.DB_PASS || 'cheese',
+  host: process.env.DATABASE_URL,
+  port: parseInt(process.env.DB_PORT, 10) || 5432,
+  name: process.env.DB_NAME,
+  user: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({
