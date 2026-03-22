@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
-import { API_BASE_URL, ENDPOINTS } from '@/constants'
+import { API_URL, ENDPOINTS } from '@/constants'
 import type { ApiError, AuthTokens } from '@/types'
 
 // ── Token storage helpers ─────────────────────────────────
@@ -21,7 +21,7 @@ export const tokenStore = {
 
 // ── Create axios instance ─────────────────────────────────
 const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   timeout: 15_000,
   withCredentials: true,   // sends the httpOnly refresh-token cookie
   headers: {
@@ -60,7 +60,7 @@ apiClient.interceptors.response.use(
         if (!_refreshPromise) {
           _refreshPromise = axios
             .post<{ data: AuthTokens }>(
-              `${API_BASE_URL}${ENDPOINTS.AUTH.REFRESH}`,
+              `${API_URL}${ENDPOINTS.AUTH.REFRESH}`,
               {},
               { withCredentials: true },
             )
