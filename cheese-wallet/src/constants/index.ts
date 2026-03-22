@@ -2,7 +2,7 @@
 // CHEESE WALLET — API Constants & Endpoint Registry
 // ─────────────────────────────────────────────────────────
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.cheesewallet.app/v1'
+export const API_URL = process.env.API_URL ?? 'https://api.cheesewallet.app/v1'
 
 export const ENDPOINTS = {
   // ── Auth ──────────────────────────────────────────────

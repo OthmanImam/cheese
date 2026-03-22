@@ -2,7 +2,7 @@
 
 // ── API Base URL ──────────────────────────────────────────
 // Matches the NestJS backend's /v1 prefix
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1'
+export const API_BASE_URL = process.env.API_URL || 'http://localhost:3001/v1'
 
 // ── Query Keys for React Query ────────────────────────────
 export const QUERY_KEYS: any = {

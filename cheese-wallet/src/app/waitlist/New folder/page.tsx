@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter }                    from 'next/navigation'
 import Link                             from 'next/link'
 // if you need base URL outside of axios instance, derive from env
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const API_URL = process.env.API_URL || 'http://localhost:4000/api/v1';
 
 // ── Types ────────────────────────────────────────────────────
 type Step = 'form' | 'success'
@@ -33,7 +33,7 @@ export default function WaitlistPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const res  = await fetch(`${API_BASE_URL}/waitlist/check/${username}`)
+        const res  = await fetch(`${API_URL}/waitlist/check/${username}`)
         const data = await res.json()
         setAvail(data?.data?.available ? 'available' : 'taken')
       } catch {
