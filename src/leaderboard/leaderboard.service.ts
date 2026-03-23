@@ -14,7 +14,7 @@ export class LeaderboardService {
   async getTopUsers(limit: number = 100) {
     const entries = await this.waitlistRepo
       .createQueryBuilder('waitlist')
-      .select(['waitlist.username', 'waitlist.points', 'waitlist.createdAt'])
+      .select(['waitlist.username', 'waitlist.points'])
       .orderBy('waitlist.points', 'DESC')
       .addOrderBy('waitlist.createdAt', 'ASC')
       .limit(limit)
