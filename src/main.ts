@@ -22,15 +22,7 @@ async function bootstrap() {
   app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }));
   // app.use(cookieParser());
 
-  // ── CORS ─────────────────────────────────────────────────
-  const allowedOrigins = [
-    origin,
-    // allow requests from same host (swagger UI, server-side callbacks)
-  //   `http://localhost:${port}`,
-  //   'https://cheesepay.xyz',
-  //   'https://www.cheesepay.xyz',
-  //   /https:\/\/.*\.vercel\.app$/,  // allows all vercel preview URLs
-  // ].filter(Boolean);
+  // ── CORS ────────────────────────────────────────────────
 
     app.enableCors({
   origin: true,
