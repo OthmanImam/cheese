@@ -87,7 +87,7 @@ export class EmailService {
       email: params.to,
       username: params.username,
       position: params.position,
-      referralCode: params.referralCode,
+      // referralCode: params.referralCode,
     });
     await this.send({ to: params.to, subject, html });
   }
