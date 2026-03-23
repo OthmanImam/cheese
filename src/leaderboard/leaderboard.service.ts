@@ -46,7 +46,7 @@ export class LeaderboardService {
       .where('w.points > :points', { points: entry.points })
       .orWhere('w.points = :points AND w.createdAt < :createdAt', {
         points: entry.points,
-        createdAt: entry.createdAt,
+        // createdAt: entry.createdAt,
       })
       .getCount();
 
