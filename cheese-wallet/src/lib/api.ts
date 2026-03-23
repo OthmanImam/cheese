@@ -216,17 +216,33 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
   }
 }
 
+// export async function getReservedUsernamesCount(): Promise<number> {
+//   try {
+//     const { data } = await api.get<any>('/waitlist/count');
+//     // Handle different response formats
+//     if (typeof data === 'number') {
+//       return data;
+//     } else if (data?.data && typeof data.data === 'number') {
+//       return data.data;
+//     } else if (data?.count && typeof data.count === 'number') {
+//       return data.count;
+//     }
+//     return 0;
+//   } catch (error: any) {
+//     console.error('[getReservedUsernamesCount] Error:', error);
+//     return 0;
+//   }
+// }
 export async function getReservedUsernamesCount(): Promise<number> {
   try {
     const { data } = await api.get<any>('/waitlist/count');
-    // Handle different response formats
-    if (typeof data === 'number') {
-      return data;
-    } else if (data?.data && typeof data.data === 'number') {
-      return data.data;
-    } else if (data?.count && typeof data.count === 'number') {
-      return data.count;
-    }
+
+    // unwrap interceptor envelope first
+    const payload = data?.data ?? data;
+
+    if (typeof payload === 'number') return payload;
+    if (typeof payload?.count === 'number') return payload.count;
+
     return 0;
   } catch (error: any) {
     console.error('[getReservedUsernamesCount] Error:', error);
