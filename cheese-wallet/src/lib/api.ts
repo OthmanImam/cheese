@@ -217,12 +217,15 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
 }
 
 
+
+
 // export async function getReservedUsernamesCount(): Promise<number> {
 //   try {
 //     const { data } = await api.get<any>('/waitlist/count');
+//     console.log('[count] raw response:', JSON.stringify(data));
     
-//     // Your ResponseInterceptor wraps responses as { success: true, data: { count: X } }
 //     const payload = data?.data ?? data;
+//     console.log('[count] payload:', JSON.stringify(payload));
 
 //     if (typeof payload === 'number') return payload;
 //     if (typeof payload?.count === 'number') return payload.count;
@@ -237,13 +240,10 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
 export async function getReservedUsernamesCount(): Promise<number> {
   try {
     const { data } = await api.get<any>('/waitlist/count');
-    console.log('[count] raw response:', JSON.stringify(data));
     
-    const payload = data?.data ?? data;
-    console.log('[count] payload:', JSON.stringify(payload));
-
-    if (typeof payload === 'number') return payload;
-    if (typeof payload?.count === 'number') return payload.count;
+    // Response shape: { success: true, data: 4 }
+    if (typeof data?.data === 'number') return data.data;
+    if (typeof data === 'number') return data;
 
     return 0;
   } catch (error: any) {
