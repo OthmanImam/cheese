@@ -81,13 +81,13 @@ export class EmailService {
     to: string;
     username: string;
     position?: number;
-    // referralCode?: string;
+    
   }): Promise<void> {
     const { subject, html } = waitlistConfirmation({
       email: params.to,
       username: params.username,
       position: params.position,
-      // referralCode: params.referralCode,
+     
     });
     await this.send({ to: params.to, subject, html });
   }
@@ -194,7 +194,7 @@ export class EmailService {
     const { subject, html } = moneySent({
       ...params,
       fullName: params.fullName || 'User',
-      appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
+      appUrl: params.appUrl || 'https://cheesepay.xyz/wallet',
     });
     await this.send({ to: params.to, subject, html });
   }
