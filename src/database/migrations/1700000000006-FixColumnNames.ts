@@ -24,12 +24,17 @@ export class FixColumnNames1700000000006 implements MigrationInterface {
     ];
 
     for (const [table, from, to] of renames) {
-      try {
+      const result = await queryRunner.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = '${table}'
+        AND column_name = '${from}'
+      `);
+
+      if (result.length > 0) {
         await queryRunner.query(
           `ALTER TABLE "${table}" RENAME COLUMN "${from}" TO "${to}"`,
         );
-      } catch {
-        // Column already renamed or doesn't exist — skip
       }
     }
   }
