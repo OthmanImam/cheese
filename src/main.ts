@@ -26,11 +26,23 @@ async function bootstrap() {
   const allowedOrigins = [
     origin,
     // allow requests from same host (swagger UI, server-side callbacks)
-    `http://localhost:${port}`,
-    'https://cheesepay.xyz',
-    'https://www.cheesepay.xyz',
-    /https:\/\/.*\.vercel\.app$/,  // allows all vercel preview URLs
-  ].filter(Boolean);
+  //   `http://localhost:${port}`,
+  //   'https://cheesepay.xyz',
+  //   'https://www.cheesepay.xyz',
+  //   /https:\/\/.*\.vercel\.app$/,  // allows all vercel preview URLs
+  // ].filter(Boolean);
+
+    app.enableCors({
+  origin: true, // ← allows ALL origins
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-App-Version',
+    'X-Platform',
+  ],
+});
 
   app.enableCors({
     origin: (requestOrigin, callback) => {
