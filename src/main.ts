@@ -36,22 +36,6 @@ async function bootstrap() {
   ],
 }),
 
-  app.enableCors({
-    origin: (requestOrigin, callback) => {
-      if (!requestOrigin) return callback(null, true);
-      if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
-      callback(new Error(`Origin ${requestOrigin} not allowed`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-App-Version',
-      'X-Platform',
-    ],
-  });
-
   // ── Global validation ────────────────────────────────────
   app.useGlobalPipes(
     new ValidationPipe({
