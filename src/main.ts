@@ -33,7 +33,7 @@ async function bootstrap() {
   // ].filter(Boolean);
 
     app.enableCors({
-  origin: true, // ← allows ALL origins
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
@@ -42,7 +42,7 @@ async function bootstrap() {
     'X-App-Version',
     'X-Platform',
   ],
-});
+}),
 
   app.enableCors({
     origin: (requestOrigin, callback) => {
