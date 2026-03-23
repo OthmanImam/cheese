@@ -119,7 +119,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
         const usePostgres = !!config.get('db.host');
 
         return {
-          type,
+          type: usePostgres ? 'postgres' : 'sqlite',
           host: config.get('db.host'),
           port: config.get('db.port'),
           username: config.get('db.user'),
