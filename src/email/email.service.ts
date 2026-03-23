@@ -81,7 +81,7 @@ export class EmailService {
     to: string;
     username: string;
     position?: number;
-    referralCode?: string;
+    // referralCode?: string;
   }): Promise<void> {
     const { subject, html } = waitlistConfirmation({
       email: params.to,
