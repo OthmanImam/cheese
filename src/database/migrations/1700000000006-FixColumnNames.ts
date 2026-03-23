@@ -3,47 +3,36 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class FixColumnNames1700000000006 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Fix users table
-    await queryRunner.query(`ALTER TABLE "users" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "users" RENAME COLUMN "updatedAt" TO "updated_at"`);
+    const renames: [string, string, string][] = [
+      ['users', 'createdAt', 'created_at'],
+      ['users', 'updatedAt', 'updated_at'],
+      ['waitlist_entries', 'createdAt', 'created_at'],
+      ['waitlist_entries', 'updatedAt', 'updated_at'],
+      ['refresh_tokens', 'createdAt', 'created_at'],
+      ['otps', 'createdAt', 'created_at'],
+      ['devices', 'createdAt', 'created_at'],
+      ['devices', 'updatedAt', 'updated_at'],
+      ['transactions', 'createdAt', 'created_at'],
+      ['transactions', 'updatedAt', 'updated_at'],
+      ['blockchain_wallets', 'createdAt', 'created_at'],
+      ['blockchain_wallets', 'updatedAt', 'updated_at'],
+      ['blockchain_transactions', 'createdAt', 'created_at'],
+      ['blockchain_transactions', 'updatedAt', 'updated_at'],
+      ['share_events', 'createdAt', 'created_at'],
+      ['referral_events', 'createdAt', 'created_at'],
+      ['exchange_rates', 'createdAt', 'created_at'],
+    ];
 
-    // Fix waitlist_entries table
-    await queryRunner.query(`ALTER TABLE "waitlist_entries" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "waitlist_entries" RENAME COLUMN "updatedAt" TO "updated_at"`);
-
-    // Fix other tables
-    await queryRunner.query(`ALTER TABLE "refresh_tokens" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "otps" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "devices" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "devices" RENAME COLUMN "updatedAt" TO "updated_at"`);
-    await queryRunner.query(`ALTER TABLE "transactions" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "transactions" RENAME COLUMN "updatedAt" TO "updated_at"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_wallets" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_wallets" RENAME COLUMN "updatedAt" TO "updated_at"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_transactions" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_transactions" RENAME COLUMN "updatedAt" TO "updated_at"`);
-    await queryRunner.query(`ALTER TABLE "share_events" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "referral_events" RENAME COLUMN "createdAt" TO "created_at"`);
-    await queryRunner.query(`ALTER TABLE "exchange_rates" RENAME COLUMN "createdAt" TO "created_at"`);
+    for (const [table, from, to] of renames) {
+      try {
+        await queryRunner.query(
+          `ALTER TABLE "${table}" RENAME COLUMN "${from}" TO "${to}"`,
+        );
+      } catch {
+        // Column already renamed or doesn't exist — skip
+      }
+    }
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "users" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "users" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "waitlist_entries" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "waitlist_entries" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "refresh_tokens" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "otps" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "devices" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "devices" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "transactions" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "transactions" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_wallets" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_wallets" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_transactions" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "blockchain_transactions" RENAME COLUMN "updated_at" TO "updatedAt"`);
-    await queryRunner.query(`ALTER TABLE "share_events" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "referral_events" RENAME COLUMN "created_at" TO "createdAt"`);
-    await queryRunner.query(`ALTER TABLE "exchange_rates" RENAME COLUMN "created_at" TO "createdAt"`);
-  }
+  public async down(queryRunner: QueryRunner): Promise<void> {}
 }
