@@ -16,7 +16,7 @@ export class LeaderboardService {
       .createQueryBuilder('waitlist')
       .select(['waitlist.username', 'waitlist.points'])
       .orderBy('waitlist.points', 'DESC')
-      .addOrderBy('waitlist.createdAt', 'ASC')
+      // .addOrderBy('waitlist.createdAt', 'ASC')
       .limit(limit)
       .getMany();
 
