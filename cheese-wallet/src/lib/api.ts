@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
-console.log('API_BASE:', API_BASE);
+// console.log('API_BASE:', API_BASE);
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -233,11 +233,28 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
 //     return 0;
 //   }
 // }
+// export async function getReservedUsernamesCount(): Promise<number> {
+//   try {
+//     const { data } = await api.get<any>('/waitlist/count');
+
+//     // unwrap interceptor envelope first
+//     const payload = data?.data ?? data;
+
+//     if (typeof payload === 'number') return payload;
+//     if (typeof payload?.count === 'number') return payload.count;
+
+//     return 0;
+//   } catch (error: any) {
+//     console.error('[getReservedUsernamesCount] Error:', error);
+//     return 0;
+//   }
+// }
+
 export async function getReservedUsernamesCount(): Promise<number> {
   try {
     const { data } = await api.get<any>('/waitlist/count');
-
-    // unwrap interceptor envelope first
+    
+    // Your ResponseInterceptor wraps responses as { success: true, data: { count: X } }
     const payload = data?.data ?? data;
 
     if (typeof payload === 'number') return payload;
