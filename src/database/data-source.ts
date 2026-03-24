@@ -16,54 +16,26 @@ import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { BlockchainWallet } from '../blockchain/entities/blockchain-wallet.entity';
 import { BlockchainTransaction } from '../blockchain/entities/blockchain-transaction.entity';
 
-const databaseUrl = process.env.DATABASE_URL;
-const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
-
-let dataSourceConfig: any;
-
-if (databaseUrl) {
-  // Use DATABASE_URL if provided (for production/Railway)
-  dataSourceConfig = {
-    type: 'postgres',
-    url: databaseUrl,
-    entities: [
-      User,
-      RefreshToken,
-      Device,
-      Otp,
-      Transaction,
-      ExchangeRate,
-      ShareEvent,
-      ReferralEvent,
-      WaitlistEntry,
-      BlockchainWallet,
-      BlockchainTransaction,
-    ],
-    migrations: [join(__dirname, 'migrations/*.{ts,js}')],
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  };
-} else {
-  // Local development: use SQLite (no server required)
-  // Exclude blockchain entities that use enums not supported by SQLite
-  dataSourceConfig = {
-    type: 'sqlite',
-    database: (process.env.DB_NAME || 'cheese_wallet') + '.db',
-    entities: [
-      User,
-      RefreshToken,
-      Device,
-      Otp,
-      Transaction,
-      ExchangeRate,
-      ShareEvent,
-      ReferralEvent,
-      WaitlistEntry,
-      // BlockchainWallet,    // Excluded: uses enums
-      // BlockchainTransaction, // Excluded: uses enums
-    ],
-    migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Enable migrations
-    synchronize: false, // Disable synchronize when using migrations
-  };
-}
-
-export const AppDataSource = new DataSource(dataSourceConfig);
+export const AppDataSource = new DataSource({
+  type: 'postgres',
+  url: process.env.DATABASE_URL,
+  entities: [
+    User,
+    RefreshToken,
+    Device,
+    Otp,
+    Transaction,
+    ExchangeRate,
+    ShareEvent,
+    ReferralEvent,
+    WaitlistEntry,
+    BlockchainWallet,
+    BlockchainTransaction,
+  ],
+  migrations: [join(__dirname, 'migrations/*.{ts,js}')],
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
+  synchronize: false,
+});
