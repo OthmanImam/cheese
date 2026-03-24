@@ -45,7 +45,6 @@ if (databaseUrl) {
 } else {
   // Local development: use SQLite (no server required)
   // Exclude blockchain entities that use enums not supported by SQLite
-  // Skip migrations for local dev - use synchronize instead
   dataSourceConfig = {
     type: 'sqlite',
     database: (process.env.DB_NAME || 'cheese_wallet') + '.db',
@@ -62,8 +61,8 @@ if (databaseUrl) {
       // BlockchainWallet,    // Excluded: uses enums
       // BlockchainTransaction, // Excluded: uses enums
     ],
-    // migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Disabled for local SQLite
-    synchronize: true, // Use synchronize for local development
+    migrations: [join(__dirname, 'migrations/*.{ts,js}')], // Enable migrations
+    synchronize: false, // Disable synchronize when using migrations
   };
 }
 
