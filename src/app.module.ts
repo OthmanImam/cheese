@@ -68,7 +68,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
 // import { PaymentRequest } from './paylink/entities/payment-request.entity';
 
 @Module({
-  controllers: [AppController], 
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -116,7 +116,7 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const databaseUrl = config.get<string>('DATABASE_URL');
+        const databaseUrl = process.env.DATABASE_URL;
         const usePostgres = !!databaseUrl || !!config.get('db.host');
 
         if (usePostgres) {
