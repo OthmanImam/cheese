@@ -35,7 +35,7 @@ const PLATFORMS: Platform[] = [
     textColor: '#000', bgColor: '#fff', icon: '𝕏',
     shareUrl: (link, u) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-        `Just reserved @${u} on @CheesePay 🧀\n\nSend money with a username. Launching soon.\n\nSecure yours 👇\n${link}`,
+        `Just reserved @${u} on @Cheesepayxyz 🧀\n\n Save in USDC spend in fiat. Cryto Made Easy. Launching soon.\n\nSecure yours 👇\n${link}`,
       )}`,
   },
   {
