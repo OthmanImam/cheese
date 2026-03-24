@@ -54,14 +54,13 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
         await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "devices" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-                "user_id" uuid NOT NULL,
-                "device_id" varchar NOT NULL,
+                "device_id" varchar NOT NULL UNIQUE,
+                "public_key" text NOT NULL,
                 "device_name" varchar,
-                "device_type" varchar,
-                "ip_address" varchar,
-                "user_agent" text,
+                "location" varchar,
                 "is_active" boolean DEFAULT true,
-                "last_used_at" TIMESTAMP,
+                "last_seen" bigint,
+                "user_id" uuid NOT NULL,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
                 CONSTRAINT "fk_devices_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
@@ -136,7 +135,7 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
                 "metadata" jsonb,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
-                CONSTRAINT "fk_transactions_user" FOREIGN KEY ("user_id") REFERENCES "users"("id")
+                CONSTRAINT "fk_transactions_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT
             )
         `);
 
@@ -155,9 +154,11 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
         // Create indexes
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_points" ON "users" ("points")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_points_created" ON "users" ("points", "created_at")`);
+        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_user_email" ON "users" ("email")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_points" ON "waitlist_entries" ("points")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_points_created" ON "waitlist_entries" ("points", "created_at")`);
-        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_devices_user" ON "devices" ("user_id")`);
+        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_waitlist_email" ON "waitlist_entries" ("email")`);
+        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_devices_device_id" ON "devices" ("device_id")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_refresh_tokens_user" ON "refresh_tokens" ("user_id")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_otps_email" ON "otps" ("email")`);
         await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_share_events_user" ON "share_events" ("user_id")`);
@@ -166,7 +167,6 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        // Drop tables in reverse order
         await queryRunner.query(`DROP TABLE IF EXISTS "exchange_rates"`);
         await queryRunner.query(`DROP TABLE IF EXISTS "transactions"`);
         await queryRunner.query(`DROP TABLE IF EXISTS "referral_events"`);
