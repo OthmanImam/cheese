@@ -21,7 +21,7 @@ export const dbConfig = registerAs('db', () => ({
   port: parseInt(process.env.DB_PORT || '5432', 10),
   name: process.env.DB_NAME,
   user: process.env.DB_USER,
-  pass: process.env.DB_PASS,   // ← make sure this is 'pass' not 'password'
+  pass: process.env.DB_PASS,
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({
