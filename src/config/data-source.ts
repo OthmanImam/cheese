@@ -6,15 +6,32 @@ import { join } from 'path';
 
 dotenv.config();
 
-export default new DataSource({
-  type: process.env.NODE_ENV === 'production' ? 'postgres' : 'sqlite',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  username: process.env.DB_USER || 'cheese',
-  password: process.env.DB_PASS || 'cheese',
-  database: process.env.DB_NAME || 'cheese_wallet',
-  entities: [join(__dirname, '../**/*.entity.{ts,js}')],
-  migrations: [join(__dirname, '../migrations/*.{ts,js}')],
-  synchronize: process.env.NODE_ENV !== 'production',
-  logging: process.env.NODE_ENV !== 'production',
-});
+const databaseUrl = process.env.DATABASE_URL;
+const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
+
+let dataSourceConfig: any;
+
+if (databaseUrl) {
+  // Use DATABASE_URL if provided (for production/Railway)
+  dataSourceConfig = {
+    type: 'postgres',
+    url: databaseUrl,
+    entities: [join(__dirname, '../**/*.entity.{ts,js}')],
+    migrations: [join(__dirname, '../migrations/*.{ts,js}')],
+    synchronize: process.env.NODE_ENV !== 'production',
+    logging: process.env.NODE_ENV !== 'production',
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  };
+} else {
+  // Local development: use SQLite (no server required)
+  dataSourceConfig = {
+    type: 'sqlite',
+    database: (process.env.DB_NAME || 'cheese_wallet') + '.db',
+    entities: [join(__dirname, '../**/*.entity.{ts,js}')],
+    migrations: [join(__dirname, '../migrations/*.{ts,js}')],
+    synchronize: process.env.NODE_ENV !== 'production',
+    logging: process.env.NODE_ENV !== 'production',
+  };
+}
+
+export default new DataSource(dataSourceConfig);
