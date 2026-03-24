@@ -1,3 +1,4 @@
+// src/waitlist/waitlist.service.ts
 import {
   BadRequestException,
   ConflictException,
@@ -27,10 +28,10 @@ const RESERVED_USERNAMES = new Set([
   'security', 'legal', 'billing', 'payments', 'wallet', 'system',
   'root', 'null', 'undefined', 'anonymous', 'guest',
 ]);
-// How many days after joining before we send the first reminder
-const FIRST_REMINDER_DAYS = 7;
+
+const FIRST_REMINDER_DAYS  = 7;
 const SECOND_REMINDER_DAYS = 21;
-const RELEASE_DAYS = 90; // unreserve if no signup after this long
+const RELEASE_DAYS         = 90;
 
 @Injectable()
 export class WaitlistService {
@@ -43,25 +44,22 @@ export class WaitlistService {
     private readonly shareRepo: Repository<ShareEvent>,
     @InjectRepository(ReferralEvent)
     private readonly referralRepo: Repository<ReferralEvent>,
+    @InjectRepository(WaitlistEntry)
+    private readonly entryRepo: Repository<WaitlistEntry>,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
-    @InjectRepository(WaitlistEntry)
-    private readonly entryRepo: Repository<WaitlistEntry>,
-    @Optional()
-    @InjectQueue('share-tracking')
+    @Optional() @InjectQueue('share-tracking')
     private readonly shareQueue?: Queue,
-
-    @Optional()
-    @InjectQueue('fraud-detection')
+    @Optional() @InjectQueue('fraud-detection')
     private readonly fraudQueue?: Queue,
   ) {}
 
   // ── Register ──────────────────────────────────────────────────────────────
 
   async register(dto: RegisterDto, ipAddress: string) {
-    const { email, username, referralCode } = dto;
+    const { email, username, referralCode: incomingReferralCode } = dto;
 
     if (RESERVED_USERNAMES.has(username.toLowerCase())) {
       throw new ConflictException('This username is reserved');
@@ -72,141 +70,110 @@ export class WaitlistService {
     await queryRunner.startTransaction('SERIALIZABLE');
 
     try {
-      // Pessimistic write lock prevents race conditions on username
       const takenUsername = await queryRunner.manager.findOne(WaitlistEntry, {
         where: { username },
         lock: { mode: 'pessimistic_write' },
       });
       if (takenUsername) throw new ConflictException('This username is already reserved');
 
-      const takenEmail = await queryRunner.manager.findOne(WaitlistEntry, {
-        where: { email },
-      });
+      const takenEmail = await queryRunner.manager.findOne(WaitlistEntry, { where: { email } });
       if (takenEmail) throw new ConflictException('This email is already on the waitlist');
 
-      // Only check User table for active users
       const userWithUsername = await queryRunner.manager.findOne(User, {
         where: { username, emailVerified: true },
       });
       if (userWithUsername) throw new ConflictException('This username is already taken');
 
+      // ── Resolve referrer ──────────────────────────────────────────────────
       let referrerUser: User | null = null;
       let referrerWaitlist: WaitlistEntry | null = null;
-      let referrerType: 'user' | 'waitlist' = 'user';
 
-      if (referralCode) {
-        // First check if referral code belongs to a registered user
+      if (incomingReferralCode) {
         referrerUser = await queryRunner.manager.findOne(User, {
-          where: { referralCode },
+          where: { referralCode: incomingReferralCode },
         });
 
         if (!referrerUser) {
-          // If not a user, check if it's a waitlist entry
           referrerWaitlist = await queryRunner.manager.findOne(WaitlistEntry, {
-            where: { referralCode },
+            where: { referralCode: incomingReferralCode },
           });
-          if (referrerWaitlist) {
-            referrerType = 'waitlist';
-          }
         }
-        // Silently ignore invalid referral codes — don't block registration
+        // Silently ignore invalid codes — don't block registration
       }
 
-      // Calculate position (total waitlist entries + 1)
+      // ── Create entry ──────────────────────────────────────────────────────
       const totalEntries = await queryRunner.manager.count(WaitlistEntry);
-      const position = totalEntries + 1;
+      const position     = totalEntries + 1;
+      const generatedCode = nanoid(8);
 
-      const newWaitlistEntry = await queryRunner.manager.save(
+      const newEntry = await queryRunner.manager.save(
         queryRunner.manager.create(WaitlistEntry, {
           email,
           username,
-          status: WaitlistStatus.PENDING,
-          referralSource: referralCode || null,
-          referrerId: referrerUser?.id || referrerWaitlist?.id || null,
-          referralCode: nanoid(8),
+          status:        WaitlistStatus.PENDING,
+          referralSource: incomingReferralCode || null,
+          referrerId:    referrerUser?.id || referrerWaitlist?.id || null,
+          referralCode:  generatedCode,
           ipAddress,
           position,
         }),
       );
 
-      // Award referral points immediately when joining waitlist
+      // ── Award referral points ─────────────────────────────────────────────
       if (referrerUser) {
-        // Award points to registered user
-        await queryRunner.manager.increment(
-          User,
-          { id: referrerUser.id },
-          'points',
-          REFERRAL_POINTS,
-        );
-
-        // Record the referral event
+        await queryRunner.manager.increment(User, { id: referrerUser.id }, 'points', REFERRAL_POINTS);
         await queryRunner.manager.save(
           queryRunner.manager.create(ReferralEvent, {
-            referrerUserId: referrerUser.id,
-            referredWaitlistId: newWaitlistEntry.id,
-            referredType: 'waitlist',
-            pointsAwarded: REFERRAL_POINTS,
+            referrerUserId:    referrerUser.id,
+            referredWaitlistId: newEntry.id,
+            referredType:      'waitlist',
+            pointsAwarded:     REFERRAL_POINTS,
           }),
         );
+        this.logger.log(`Referral points → user ${referrerUser.id} (+${REFERRAL_POINTS}pts)`);
 
-        this.logger.log(
-          `Waitlist referral points awarded [referrerUser=${referrerUser.id}] [newWaitlist=${newWaitlistEntry.id}] [points=${REFERRAL_POINTS}]`,
-        );
       } else if (referrerWaitlist) {
-        // Award points to waitlist user
-        await queryRunner.manager.increment(
-          WaitlistEntry,
-          { id: referrerWaitlist.id },
-          'points',
-          REFERRAL_POINTS,
-        );
-
-        // Record the referral event
+        await queryRunner.manager.increment(WaitlistEntry, { id: referrerWaitlist.id }, 'points', REFERRAL_POINTS);
         await queryRunner.manager.save(
           queryRunner.manager.create(ReferralEvent, {
             referrerWaitlistId: referrerWaitlist.id,
-            referredWaitlistId: newWaitlistEntry.id,
-            referredType: 'waitlist',
-            pointsAwarded: REFERRAL_POINTS,
+            referredWaitlistId: newEntry.id,
+            referredType:       'waitlist',
+            pointsAwarded:      REFERRAL_POINTS,
           }),
         );
-
-        this.logger.log(
-          `Waitlist-to-waitlist referral points awarded [referrerWaitlist=${referrerWaitlist.id}] [newWaitlist=${newWaitlistEntry.id}] [points=${REFERRAL_POINTS}]`,
-        );
+        this.logger.log(`Referral points → waitlist ${referrerWaitlist.id} (+${REFERRAL_POINTS}pts)`);
       }
 
       await queryRunner.commitTransaction();
 
-      // Fire-and-forget side effects
+      // ── Fire-and-forget: confirmation email ───────────────────────────────
       this.emailService.sendWaitlistConfirmation({
-        to: newWaitlistEntry.email,
-        username: newWaitlistEntry.username,
-        position: newWaitlistEntry.position || undefined,
-        referralCode: newWaitlistEntry.referralCode || undefined,
-      }).then(async () => {
-        // Update notifiedAt when email is successfully sent
-        await this.entryRepo.update(newWaitlistEntry.id, {
-          notifiedAt: new Date(),
-        });
-      }).catch((err) =>
+        to:       newEntry.email,
+        username: newEntry.username,
+        position: newEntry.position ?? undefined,
+        // ← referralCode intentionally omitted — not part of the template interface
+      }).then(() =>
+        this.entryRepo.update(newEntry.id, { notifiedAt: new Date() }),
+      ).catch((err) =>
         this.logger.error('Waitlist confirmation email failed', err),
       );
 
-      const frontendUrl = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
-      const referralLink = `${frontendUrl}/waitlist?ref=${newWaitlistEntry.referralCode}`;
+      const frontendUrl   = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+      const referralLink  = `${frontendUrl}/waitlist?ref=${newEntry.referralCode}`;
 
       return {
         user: {
-          id: newWaitlistEntry.id,
-          email: newWaitlistEntry.email,
-          username: newWaitlistEntry.username,
-          referralCode: newWaitlistEntry.referralCode,
-          points: newWaitlistEntry.points, // Return actual points (may include referral bonuses)
-          createdAt: newWaitlistEntry.createdAt.toISOString(),
+          id:           newEntry.id,
+          email:        newEntry.email,
+          username:     newEntry.username,
+          referralCode: newEntry.referralCode,
+          points:       newEntry.points,
+          createdAt:    newEntry.createdAt.toISOString(),
         },
         referralLink,
       };
+
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -215,7 +182,7 @@ export class WaitlistService {
     }
   }
 
-  // ── Track Share ──────────────────────────────────────────────────────────
+  // ── Track Share ───────────────────────────────────────────────────────────
 
   async trackShare(dto: ShareDto, ipAddress: string, userAgent: string) {
     const { userId, platform } = dto;
@@ -256,9 +223,7 @@ export class WaitlistService {
       .getOne();
 
     if (alreadyShared) {
-      throw new ConflictException(
-        `You have already shared on ${platform} today. Come back tomorrow!`,
-      );
+      throw new ConflictException(`You have already shared on ${platform} today. Come back tomorrow!`);
     }
 
     const shareEvent = this.shareRepo.create({
@@ -327,7 +292,6 @@ export class WaitlistService {
       );
     }
 
-    // Check for fraud
     if (this.fraudQueue) {
       this.fraudQueue
         .add('check-share', { type: 'check-share', shareEventId: shareEvent.id, ipAddress }, {
@@ -345,44 +309,29 @@ export class WaitlistService {
     };
   }
 
-  // ── Check Username ───────────────────────────────────────────────────────
+  // ── Check Username ────────────────────────────────────────────────────────
 
   async checkUsername(username: string) {
     if (RESERVED_USERNAMES.has(username.toLowerCase())) {
       return { available: false, username, reason: 'This username is reserved' };
     }
-    
-    // Check if already taken by registered user
+
     const existingUser = await this.userRepo.findOne({ where: { username } });
     if (existingUser) {
-      return {
-        available: false,
-        username,
-        reason: 'Username is already taken',
-      };
+      return { available: false, username, reason: 'Username is already taken' };
     }
-    
-    // Check if already reserved in waitlist
+
     const existingEntry = await this.entryRepo.findOne({ where: { username } });
     if (existingEntry) {
-      return {
-        available: false,
-        username,
-        reason: 'Username is already reserved',
-      };
+      return { available: false, username, reason: 'Username is already reserved' };
     }
-    
-    return {
-      available: true,
-      username,
-      reason: undefined,
-    };
+
+    return { available: true, username, reason: undefined };
   }
 
   // ── Referral Info ─────────────────────────────────────────────────────────
 
   async getReferralInfo(code: string) {
-    // First check registered users
     const user = await this.userRepo.findOne({
       where: { referralCode: code },
       select: ['id', 'username', 'referralCode'],
@@ -391,7 +340,6 @@ export class WaitlistService {
       return { valid: true, referrerUsername: user.username, referralCode: user.referralCode };
     }
 
-    // Then check waitlist entries
     const waitlistEntry = await this.entryRepo.findOne({
       where: { referralCode: code },
       select: ['id', 'username', 'referralCode'],
@@ -403,38 +351,26 @@ export class WaitlistService {
     throw new NotFoundException('Referral code not found');
   }
 
-  // ── User Points ───────────────────────────────────────────────────────────
+  // ── Points ────────────────────────────────────────────────────────────────
 
   async getEntryByEmail(email: string): Promise<WaitlistEntry | null> {
     return this.entryRepo.findOne({ where: { email } });
   }
 
-  /**
-   * Return a small summary of a user's current point totals, along with
-   * share/referral counts and a timestamp for cache invalidation.
-   */
-  async getUserPoints(userId: string): Promise<{
-    points: number;
-    shareCount: number;
-    referralCount: number;
-    timestamp: string;
-  }> {
+  async getUserPoints(userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId }, select: ['points'] });
     if (!user) throw new NotFoundException('User not found');
 
     const shareCount = await this.shareRepo.count({ where: { userId, verified: true } });
-    const referralCount = await this.referralRepo.count({ 
-      where: [
-        { referrerUserId: userId },
-        { referrerWaitlistId: userId }
-      ]
+    const referralCount = await this.referralRepo.count({
+      where: [{ referrerUserId: userId }, { referrerWaitlistId: userId }],
     });
 
     return {
-      points: user.points,
+      points:        user.points,
       shareCount,
       referralCount,
-      timestamp: new Date().toISOString(),
+      timestamp:     new Date().toISOString(),
     };
   }
 
@@ -448,46 +384,24 @@ export class WaitlistService {
     return count;
   }
 
-  // ────────────────────────────────────────────────────────
-  // SCHEDULED: Send reminders to unconverted waitlist entries
-  // Runs every day at 9 AM WAT (8 AM UTC)
-  // ────────────────────────────────────────────────────────
+  // ── Scheduled reminders ───────────────────────────────────────────────────
+
   @Cron('0 8 * * *', { timeZone: 'UTC' })
   async sendReminders(): Promise<void> {
-    const appUrl = this.config.get<string>(
-      'app.frontendUrl',
-      'https://cheesepay.xyz',
-    );
+    const appUrl    = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
     const signupBase = `${appUrl}/signup`;
-    const now = new Date();
 
-    // Fetch all pending (not converted, not yet released) entries
-    const entries = await this.entryRepo.find({
-      where: { status: WaitlistStatus.PENDING },
-    });
+    const entries = await this.entryRepo.find({ where: { status: WaitlistStatus.PENDING } });
 
-    // iterate entries and send reminder emails or notifications as needed
     for (const entry of entries) {
-      // placeholder just logs for now
       this.logger.debug(`Reminding waitlist entry ${entry.email}`);
-      // actual reminder logic would use emailService/notificationsService
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Private helpers ───────────────────────────────────────────────────────
 
   private buildReferralLink(code: string): string {
-    return `${process.env.FRONTEND_URL || 'https://cheese.app'}/waitlist?ref=${code}`;
-  }
-
-  private sanitizeUser(user: User) {
-    return {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      referralCode: user.referralCode,
-      points: user.points,
-      createdAt: user.createdAt,
-    };
+    const base = this.config.get<string>('app.frontendUrl', 'https://cheesepay.xyz');
+    return `${base}/waitlist?ref=${code}`;
   }
 }

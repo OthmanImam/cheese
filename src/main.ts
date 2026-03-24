@@ -22,30 +22,19 @@ async function bootstrap() {
   app.use(helmet({ contentSecurityPolicy: isDev ? false : undefined }));
   // app.use(cookieParser());
 
-  // ── CORS ─────────────────────────────────────────────────
-  const allowedOrigins = [
-    origin,
-    // allow requests from same host (swagger UI, server-side callbacks)
-    `http://localhost:${port}`,
-    'https://cheesepay.xyz',
-    'https://www.cheesepay.xyz',
-  ].filter(Boolean);
+  // ── CORS ────────────────────────────────────────────────
 
-  app.enableCors({
-    origin: (requestOrigin, callback) => {
-      if (!requestOrigin) return callback(null, true);
-      if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
-      callback(new Error(`Origin ${requestOrigin} not allowed`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-App-Version',
-      'X-Platform',
-    ],
-  });
+    app.enableCors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-App-Version',
+    'X-Platform',
+  ],
+}),
 
   // ── Global validation ────────────────────────────────────
   app.useGlobalPipes(
