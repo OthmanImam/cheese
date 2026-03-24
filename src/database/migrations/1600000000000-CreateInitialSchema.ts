@@ -72,8 +72,12 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             CREATE TABLE IF NOT EXISTS "refresh_tokens" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "user_id" uuid NOT NULL,
-                "token" varchar NOT NULL UNIQUE,
-                "expires_at" TIMESTAMP NOT NULL,
+                "token_hash" varchar NOT NULL UNIQUE,
+                "device_id" varchar,
+                "expires_at" bigint NOT NULL,
+                "is_revoked" boolean DEFAULT false,
+                "user_agent" varchar,
+                "ip_address" varchar,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 CONSTRAINT "fk_refresh_tokens_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
             )
@@ -84,9 +88,11 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
             CREATE TABLE IF NOT EXISTS "otps" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "email" varchar NOT NULL,
-                "code" varchar NOT NULL,
-                "expires_at" TIMESTAMP NOT NULL,
-                "used" boolean DEFAULT false,
+                "code_hash" varchar NOT NULL,
+                "type" varchar NOT NULL,
+                "expires_at" bigint NOT NULL,
+                "is_used" boolean DEFAULT false,
+                "attempts" integer DEFAULT 0,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now()
             )
         `);
@@ -98,14 +104,14 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
                 "user_id" uuid,
                 "waitlist_id" uuid,
                 "sharer_type" varchar NOT NULL,
-                "platform" varchar NOT NULL,
-                "url" varchar NOT NULL,
+                "platform" varchar(20) NOT NULL,
+                "verified" boolean DEFAULT false,
                 "points_awarded" integer DEFAULT 0,
-                "ip_address" varchar,
+                "ip_address" varchar(50),
                 "user_agent" text,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-                CONSTRAINT "fk_share_events_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL,
-                CONSTRAINT "fk_share_events_waitlist" FOREIGN KEY ("waitlist_id") REFERENCES "waitlist_entries"("id") ON DELETE SET NULL
+                CONSTRAINT "fk_share_events_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE,
+                CONSTRAINT "fk_share_events_waitlist" FOREIGN KEY ("waitlist_id") REFERENCES "waitlist_entries"("id") ON DELETE CASCADE
             )
         `);
 
@@ -113,10 +119,17 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
         await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "referral_events" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-                "referrer_id" varchar NOT NULL,
-                "referee_id" varchar NOT NULL,
-                "points_awarded" integer DEFAULT 0,
-                "created_at" TIMESTAMP NOT NULL DEFAULT now()
+                "referrer_user_id" uuid,
+                "referrer_waitlist_id" uuid,
+                "referred_user_id" uuid,
+                "referred_waitlist_id" uuid,
+                "referred_type" varchar DEFAULT 'waitlist',
+                "points_awarded" integer DEFAULT 20,
+                "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+                CONSTRAINT "fk_referral_events_referrer_user" FOREIGN KEY ("referrer_user_id") REFERENCES "users"("id") ON DELETE CASCADE,
+                CONSTRAINT "fk_referral_events_referrer_waitlist" FOREIGN KEY ("referrer_waitlist_id") REFERENCES "waitlist_entries"("id") ON DELETE CASCADE,
+                CONSTRAINT "fk_referral_events_referred_user" FOREIGN KEY ("referred_user_id") REFERENCES "users"("id") ON DELETE CASCADE,
+                CONSTRAINT "fk_referral_events_referred_waitlist" FOREIGN KEY ("referred_waitlist_id") REFERENCES "waitlist_entries"("id") ON DELETE CASCADE
             )
         `);
 
@@ -126,13 +139,21 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                 "user_id" uuid NOT NULL,
                 "type" varchar NOT NULL,
-                "amount" numeric NOT NULL,
-                "currency" varchar NOT NULL,
-                "status" varchar NOT NULL,
-                "description" text,
-                "reference" varchar UNIQUE,
-                "external_id" varchar,
-                "metadata" jsonb,
+                "status" varchar DEFAULT 'pending',
+                "amount_usdc" decimal(20, 6) NOT NULL,
+                "amount_ngn" decimal(20, 2),
+                "fee_usdc" decimal(20, 6) DEFAULT 0,
+                "rate_applied" decimal(12, 4),
+                "recipient_username" varchar,
+                "recipient_address" varchar,
+                "recipient_name" varchar,
+                "bank_name" varchar,
+                "account_number" varchar,
+                "tx_hash" varchar UNIQUE,
+                "network" varchar,
+                "reference" varchar UNIQUE NOT NULL,
+                "description" varchar,
+                "failure_reason" varchar,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
                 CONSTRAINT "fk_transactions_user" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT
@@ -143,9 +164,9 @@ export class CreateInitialSchema1600000000000 implements MigrationInterface {
         await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "exchange_rates" (
                 "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-                "usd_to_ngn" numeric NOT NULL,
-                "effective_rate" numeric NOT NULL,
-                "spread_percent" numeric NOT NULL DEFAULT 0,
+                "usd_to_ngn" decimal(12, 4) NOT NULL,
+                "effective_rate" decimal(12, 4) NOT NULL,
+                "spread_percent" decimal(5, 2) NOT NULL DEFAULT 0,
                 "source" varchar,
                 "fetched_at" TIMESTAMP NOT NULL DEFAULT now()
             )
