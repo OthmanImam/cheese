@@ -208,7 +208,7 @@ export async function getUserPoints(userId: string): Promise<PointsResponse> {
 
 export async function getUserRank(userId: string): Promise<RankResponse> {
   try {
-    const { data } = await api.get<any>(`/waitlist/leaderboard/rank/${userId}`);
+    const { data } = await api.get<any>(`/leaderboard/rank/${userId}`);
     return data?.data || data;
   } catch (error: any) {
     console.error('[getUserRank] Error:', error);

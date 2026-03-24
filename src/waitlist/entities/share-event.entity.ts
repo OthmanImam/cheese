@@ -8,6 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
+import { WaitlistEntry } from './waitlist-entry.entity';
 
 export enum SharePlatform {
   TWITTER  = 'twitter',
@@ -25,18 +26,32 @@ export const PLATFORM_POINTS: Record<SharePlatform, number> = {
   [SharePlatform.TELEGRAM]: 5,
 };
 
+export enum SharerType {
+  USER = 'user',
+  WAITLIST = 'waitlist',
+}
+
 @Entity('share_events')
 export class ShareEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
-  @Column({ name: 'user_id' })
-  userId: string;
+  @Column({ name: 'user_id', nullable: true })
+  userId: string | null;
 
-  @ManyToOne(() => User, (user) => user.shareEvents, { onDelete: 'CASCADE' })
+  @Column({ name: 'waitlist_id', nullable: true })
+  waitlistId: string | null;
+
+  @Column({ name: 'sharer_type', type: 'varchar', default: 'waitlist' })
+  sharerType: 'user' | 'waitlist';
+
+  @ManyToOne(() => User, (user) => user.shareEvents, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user?: User;
+
+  @ManyToOne(() => WaitlistEntry, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'waitlist_id' })
+  waitlistEntry?: WaitlistEntry;
 
   // sqlite doesn't support enum types, so use varchar in development
   @Column({ type: 'varchar', length: 20 })

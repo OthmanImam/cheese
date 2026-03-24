@@ -187,16 +187,36 @@ export class WaitlistService {
   async trackShare(dto: ShareDto, ipAddress: string, userAgent: string) {
     const { userId, platform } = dto;
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-    if (user.isFlagged) throw new BadRequestException('Account is flagged. Please contact support.');
+    // First check if this is a registered user
+    let user: User | null = null;
+    let waitlistEntry: WaitlistEntry | null = null;
+    let sharerType: 'user' | 'waitlist' = 'waitlist';
 
+    user = await this.userRepo.findOne({ where: { id: userId } });
+    if (user) {
+      sharerType = 'user';
+    } else {
+      // Check if this is a waitlist user
+      waitlistEntry = await this.entryRepo.findOne({ where: { id: userId } });
+      if (!waitlistEntry) {
+        throw new NotFoundException('User not found');
+      }
+      sharerType = 'waitlist';
+    }
+
+    // Check if account is flagged (only applies to registered users)
+    if (user && user.isFlagged) {
+      throw new BadRequestException('Account is flagged. Please contact support.');
+    }
+
+    // Max 1 share per platform per user per day
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const alreadyShared = await this.shareRepo
       .createQueryBuilder('se')
-      .where('se.userId = :userId', { userId })
+      .where(sharerType === 'user' ? 'se.userId = :userId' : 'se.waitlistId = :waitlistId', 
+            sharerType === 'user' ? { userId } : { waitlistId: userId })
       .andWhere('se.platform = :platform', { platform })
       .andWhere('se.createdAt >= :today', { today })
       .andWhere('se.isFraud = :fraud', { fraud: false })
@@ -206,22 +226,58 @@ export class WaitlistService {
       throw new ConflictException(`You have already shared on ${platform} today. Come back tomorrow!`);
     }
 
-    const shareEvent = await this.shareRepo.save(
-      this.shareRepo.create({
-        userId,
-        platform,
-        verified:      false,
-        pointsAwarded: 0,
-        ipAddress,
-        userAgent,
-        isFraud:       false,
-      }),
-    );
+    const shareEvent = this.shareRepo.create({
+      userId: sharerType === 'user' ? userId : null,
+      waitlistId: sharerType === 'waitlist' ? userId : null,
+      sharerType,
+      platform,
+      verified: false,
+      pointsAwarded: 0,
+      ipAddress,
+      userAgent,
+      isFraud: false,
+    });
+    await this.shareRepo.save(shareEvent);
 
+    // For development: award points synchronously instead of queuing
+    const points = PLATFORM_POINTS[platform as SharePlatform] ?? 0;
+    
+    if (points > 0) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      
+      try {
+        if (sharerType === 'user') {
+          await queryRunner.manager.increment(User, { id: userId }, 'points', points);
+        } else {
+          await queryRunner.manager.increment(WaitlistEntry, { id: userId }, 'points', points);
+        }
+        
+        // Update share event as verified
+        await queryRunner.manager.update(ShareEvent, shareEvent.id, {
+          verified: true,
+          pointsAwarded: points,
+        });
+        
+        await queryRunner.commitTransaction();
+        
+        this.logger.log(
+          `Share points awarded synchronously [${sharerType}=${userId}] [platform=${platform}] [points=${points}]`,
+        );
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    // Still add to queue for production processing (when Redis is available)
     if (this.shareQueue) {
       await this.shareQueue.add(
         'verify-share',
-        { shareEventId: shareEvent.id, userId, platform },
+        { shareEventId: shareEvent.id, userId, platform, sharerType },
         { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
       );
     }
@@ -236,10 +292,10 @@ export class WaitlistService {
     }
 
     return {
-      success:       true,
-      shareEventId:  shareEvent.id,
-      message:       'Share recorded. Points will be awarded after verification.',
-      pendingPoints: PLATFORM_POINTS[platform as SharePlatform] ?? 0,
+      success: true,
+      shareEventId: shareEvent.id,
+      message: 'Share recorded and points awarded!',
+      pendingPoints: points,
     };
   }
 

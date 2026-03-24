@@ -11,7 +11,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -24,7 +24,6 @@ import type { Request, Response } from 'express';
 import { Public } from '../common/decorators/public.decorator';
 import { WaitlistService } from './waitlist.service';
 import { CheckUsernameDto, RegisterDto, ShareDto } from './dto/waitlist.dto';
-import { LeaderboardService } from '../leaderboard/leaderboard.service';
 
 @ApiTags('Waitlist')
 @UseGuards(ThrottlerGuard)
@@ -32,7 +31,6 @@ import { LeaderboardService } from '../leaderboard/leaderboard.service';
 export class WaitlistController {
   constructor(
     private readonly waitlistService: WaitlistService,
-    private readonly leaderboardService: LeaderboardService,
   ) {}
 
   @Post('register')
@@ -143,6 +141,7 @@ export class WaitlistController {
 
   @Get('count')
   @Public()
+  @SkipThrottle()
   @ApiOperation({ summary: 'Get total count of reserved usernames' })
   @ApiResponse({
     status: 200,
@@ -152,36 +151,6 @@ export class WaitlistController {
   })
   getTotalReservedCount() {
     return this.waitlistService.getTotalReservedUsernames();
-  }
-
-  @Get('leaderboard')
-  @Public()
-  @ApiOperation({ summary: 'Get waitlist leaderboard with points ranking' })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Number of entries to return (default 100)',
-    example: 100,
-  })
-  @ApiResponse({
-    status: 200,
-    schema: {
-      example: {
-        entries: [
-          {
-            rank: 1,
-            username: 'john_doe',
-            points: 350,
-            joinDate: '2024-01-01T00:00:00.000Z',
-          },
-        ],
-        total: 150,
-      },
-    },
-  })
-  getWaitlistLeaderboard(@Query('limit') limit?: string) {
-    const limitNum = limit ? parseInt(limit) : 100;
-    return this.leaderboardService.getTopUsers(limitNum);
   }
 
   @Get('referral/:code')
