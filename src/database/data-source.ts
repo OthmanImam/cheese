@@ -21,27 +21,55 @@ const usePostgres = !!databaseUrl || !!process.env.DB_HOST;
 
 let dataSourceConfig: any;
 
-if (databaseUrl) {
-  // Use DATABASE_URL if provided (for production/Railway)
-  dataSourceConfig = {
-    type: 'postgres',
-    url: databaseUrl,
-    entities: [
-      User,
-      RefreshToken,
-      Device,
-      Otp,
-      Transaction,
-      ExchangeRate,
-      ShareEvent,
-      ReferralEvent,
-      WaitlistEntry,
-      BlockchainWallet,
-      BlockchainTransaction,
-    ],
-    migrations: [join(__dirname, 'migrations/*.{ts,js}')],
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  };
+if (usePostgres) {
+  // Use PostgreSQL when DATABASE_URL is provided or DB_HOST is configured
+  if (databaseUrl) {
+    // Use DATABASE_URL if provided (for production/Railway)
+    dataSourceConfig = {
+      type: 'postgres',
+      url: databaseUrl,
+      entities: [
+        User,
+        RefreshToken,
+        Device,
+        Otp,
+        Transaction,
+        ExchangeRate,
+        ShareEvent,
+        ReferralEvent,
+        WaitlistEntry,
+        BlockchainWallet,
+        BlockchainTransaction,
+      ],
+      migrations: [join(__dirname, 'migrations/*.{ts,js}')],
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    };
+  } else {
+    // Use individual DB_* environment variables
+    dataSourceConfig = {
+      type: 'postgres',
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      username: process.env.DB_USER,
+      password: process.env.DB_PASS,
+      database: process.env.DB_NAME,
+      entities: [
+        User,
+        RefreshToken,
+        Device,
+        Otp,
+        Transaction,
+        ExchangeRate,
+        ShareEvent,
+        ReferralEvent,
+        WaitlistEntry,
+        BlockchainWallet,
+        BlockchainTransaction,
+      ],
+      migrations: [join(__dirname, 'migrations/*.{ts,js}')],
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    };
+  }
 } else {
   // Local development: use SQLite (no server required)
   // Exclude blockchain entities that use enums not supported by SQLite

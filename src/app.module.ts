@@ -119,37 +119,75 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
         const databaseUrl = config.get<string>('DATABASE_URL');
         const usePostgres = !!databaseUrl || !!config.get('db.host');
 
-        if (databaseUrl) {
-          // Use DATABASE_URL if provided (for production/Railway)
-          return {
-            type: 'postgres',
-            url: databaseUrl,
-            entities: [
-              User,
-              RefreshToken,
-              Device,
-              Otp,
-              ShareEvent,
-              ReferralEvent,
-              WaitlistEntry,
-              // BlockchainWallet,
-              // BlockchainTransaction,
-              // Uncomment as you re-enable each module:
-              Transaction,
-              ExchangeRate,
-              // BankTransfer,
-              // VirtualCard,
-              // Notification,
-              // Referral,
-              // PaymentRequest,
-            ],
-            synchronize: config.get('app.nodeEnv') !== 'production',
-            logging: config.get('app.nodeEnv') === 'development',
-            ssl:
-              config.get('app.nodeEnv') === 'production'
-                ? { rejectUnauthorized: false }
-                : false,
-          } as any;
+        if (usePostgres) {
+          // Use PostgreSQL when DATABASE_URL is provided or DB_HOST is configured
+          if (databaseUrl) {
+            // Use DATABASE_URL if provided (for production/Railway)
+            return {
+              type: 'postgres',
+              url: databaseUrl,
+              entities: [
+                User,
+                RefreshToken,
+                Device,
+                Otp,
+                ShareEvent,
+                ReferralEvent,
+                WaitlistEntry,
+                // BlockchainWallet,
+                // BlockchainTransaction,
+                // Uncomment as you re-enable each module:
+                Transaction,
+                ExchangeRate,
+                // BankTransfer,
+                // VirtualCard,
+                // Notification,
+                // Referral,
+                // PaymentRequest,
+              ],
+              synchronize: config.get('app.nodeEnv') !== 'production',
+              logging: config.get('app.nodeEnv') === 'development',
+              ssl:
+                config.get('app.nodeEnv') === 'production'
+                  ? { rejectUnauthorized: false }
+                  : false,
+            } as any;
+          } else {
+            // Use individual DB_* environment variables
+            return {
+              type: 'postgres',
+              host: config.get('db.host'),
+              port: config.get('db.port'),
+              username: config.get('db.user'),
+              password: config.get('db.pass'),
+              database: config.get('db.name'),
+              entities: [
+                User,
+                RefreshToken,
+                Device,
+                Otp,
+                ShareEvent,
+                ReferralEvent,
+                WaitlistEntry,
+                // BlockchainWallet,
+                // BlockchainTransaction,
+                // Uncomment as you re-enable each module:
+                Transaction,
+                ExchangeRate,
+                // BankTransfer,
+                // VirtualCard,
+                // Notification,
+                // Referral,
+                // PaymentRequest,
+              ],
+              synchronize: config.get('app.nodeEnv') !== 'production',
+              logging: config.get('app.nodeEnv') === 'development',
+              ssl:
+                config.get('app.nodeEnv') === 'production'
+                  ? { rejectUnauthorized: false }
+                  : false,
+            } as any;
+          }
         }
 
         // Local development: use SQLite (no server required)
