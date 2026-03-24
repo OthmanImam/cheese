@@ -116,17 +116,46 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const usePostgres = !!config.get('db.host');
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        const usePostgres = !!databaseUrl || !!config.get('db.host');
 
+        if (databaseUrl) {
+          // Use DATABASE_URL if provided (for production/Railway)
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            entities: [
+              User,
+              RefreshToken,
+              Device,
+              Otp,
+              ShareEvent,
+              ReferralEvent,
+              WaitlistEntry,
+              // BlockchainWallet,
+              // BlockchainTransaction,
+              // Uncomment as you re-enable each module:
+              Transaction,
+              ExchangeRate,
+              // BankTransfer,
+              // VirtualCard,
+              // Notification,
+              // Referral,
+              // PaymentRequest,
+            ],
+            synchronize: config.get('app.nodeEnv') !== 'production',
+            logging: config.get('app.nodeEnv') === 'development',
+            ssl:
+              config.get('app.nodeEnv') === 'production'
+                ? { rejectUnauthorized: false }
+                : false,
+          } as any;
+        }
+
+        // Local development: use SQLite (no server required)
         return {
-          type: usePostgres ? 'postgres' : 'sqlite',
-          host: config.get('db.host'),
-          port: config.get('db.port'),
-          username: config.get('db.user'),
-          password: config.get('db.pass'),
-          database: usePostgres
-            ? config.get('db.name')
-            : config.get('db.name') + '.db',
+          type: 'sqlite',
+          database: config.get('db.name') + '.db',
           entities: [
             User,
             RefreshToken,
@@ -148,10 +177,6 @@ import { ExchangeRate } from './rates/entities/exchange-rate.entity';
           ],
           synchronize: config.get('app.nodeEnv') !== 'production',
           logging: config.get('app.nodeEnv') === 'development',
-          ssl:
-            config.get('app.nodeEnv') === 'production'
-              ? { rejectUnauthorized: false }
-              : false,
         } as any;
       },
     }),

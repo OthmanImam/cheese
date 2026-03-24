@@ -249,9 +249,19 @@ export class WaitlistService {
       
       try {
         if (sharerType === 'user') {
-          await queryRunner.manager.increment(User, { id: userId }, 'points', points);
+          await queryRunner.manager
+            .createQueryBuilder()
+            .update(User)
+            .set({ points: () => `points + ${points}` })
+            .where('id = :id', { id: userId })
+            .execute();
         } else {
-          await queryRunner.manager.increment(WaitlistEntry, { id: userId }, 'points', points);
+          await queryRunner.manager
+            .createQueryBuilder()
+            .update(WaitlistEntry)
+            .set({ points: () => `points + ${points}` })
+            .where('id = :id', { id: userId })
+            .execute();
         }
         
         // Update share event as verified
