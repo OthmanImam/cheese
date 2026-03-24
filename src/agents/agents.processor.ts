@@ -131,10 +131,13 @@ export class AgentsProcessor extends WorkerHost {
       share.isFraud = true;
       await this.shareRepo.save(share);
 
-      share.user.isFlagged = true;
-      await this.userRepo.save(share.user);
+      // Only flag user if this is a registered user (not waitlist user)
+      if (share.user) {
+        share.user.isFlagged = true;
+        await this.userRepo.save(share.user);
 
-      this.notificationsService.notifyAccountFlagged(share.user.id, `Suspicious sharing activity detected. Risk: ${risk}, Score: ${riskScore}`).catch(() => {});
+        this.notificationsService.notifyAccountFlagged(share.user.id, `Suspicious sharing activity detected. Risk: ${risk}, Score: ${riskScore}`).catch(() => {});
+      }
       this.logger.warn(`Share ${shareEventId} marked as fraud: ${reasons.join(', ')}`);
     }
 

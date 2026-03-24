@@ -12,7 +12,6 @@ import { WaitlistEntry } from './entities/waitlist-entry.entity';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AgentsModule } from '../agents/agents.module';
-import { LeaderboardModule } from '../leaderboard/leaderboard.module';
 
 @Module({
   imports: [
@@ -29,7 +28,6 @@ import { LeaderboardModule } from '../leaderboard/leaderboard.module';
     EmailModule,
     NotificationsModule,
     AgentsModule,
-    LeaderboardModule,
   ],
   controllers: [WaitlistController],
   providers: [WaitlistService, ShareProcessor, FraudProcessor],

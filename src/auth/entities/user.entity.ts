@@ -113,6 +113,6 @@ export class User {
   @OneToMany(() => Transaction, (tx) => tx.user)
   transactions: Transaction[];
 
-  @OneToMany(() => ShareEvent, (share) => share.user)
+  @OneToMany(() => ShareEvent, (share) => share.user, { nullable: true })
   shareEvents: ShareEvent[];
 }

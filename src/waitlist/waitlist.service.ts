@@ -220,10 +220,25 @@ export class WaitlistService {
   async trackShare(dto: ShareDto, ipAddress: string, userAgent: string) {
     const { userId, platform } = dto;
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    // First check if this is a registered user
+    let user: User | null = null;
+    let waitlistEntry: WaitlistEntry | null = null;
+    let sharerType: 'user' | 'waitlist' = 'waitlist';
 
-    if (user.isFlagged) {
+    user = await this.userRepo.findOne({ where: { id: userId } });
+    if (user) {
+      sharerType = 'user';
+    } else {
+      // Check if this is a waitlist user
+      waitlistEntry = await this.entryRepo.findOne({ where: { id: userId } });
+      if (!waitlistEntry) {
+        throw new NotFoundException('User not found');
+      }
+      sharerType = 'waitlist';
+    }
+
+    // Check if account is flagged (only applies to registered users)
+    if (user && user.isFlagged) {
       throw new BadRequestException('Account is flagged. Please contact support.');
     }
 
@@ -233,7 +248,8 @@ export class WaitlistService {
 
     const alreadyShared = await this.shareRepo
       .createQueryBuilder('se')
-      .where('se.userId = :userId', { userId })
+      .where(sharerType === 'user' ? 'se.userId = :userId' : 'se.waitlistId = :waitlistId', 
+            sharerType === 'user' ? { userId } : { waitlistId: userId })
       .andWhere('se.platform = :platform', { platform })
       .andWhere('se.createdAt >= :today', { today })
       .andWhere('se.isFraud = :fraud', { fraud: false })
@@ -246,7 +262,9 @@ export class WaitlistService {
     }
 
     const shareEvent = this.shareRepo.create({
-      userId,
+      userId: sharerType === 'user' ? userId : null,
+      waitlistId: sharerType === 'waitlist' ? userId : null,
+      sharerType,
       platform,
       verified: false,
       pointsAwarded: 0,
@@ -259,7 +277,7 @@ export class WaitlistService {
     if (this.shareQueue) {
       await this.shareQueue.add(
         'verify-share',
-        { shareEventId: shareEvent.id, userId, platform },
+        { shareEventId: shareEvent.id, userId, platform, sharerType },
         { attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
       );
     }

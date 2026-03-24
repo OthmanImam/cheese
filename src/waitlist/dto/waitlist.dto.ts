@@ -34,7 +34,7 @@ export class RegisterDto {
 }
 
 export class ShareDto {
-  @IsUUID(4, { message: 'userId must be a valid UUID' })
+  @IsUUID(4, { message: 'sharerId must be a valid UUID' })
   userId: string;
 
   @IsEnum(SharePlatform, {

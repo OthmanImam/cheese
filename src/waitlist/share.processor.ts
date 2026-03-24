@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/auth/entities/user.entity';
+import { WaitlistEntry } from './entities/waitlist-entry.entity';
 import { ShareEvent, SharePlatform, PLATFORM_POINTS } from './entities/share-event.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 
@@ -14,6 +15,8 @@ export class ShareProcessor extends WorkerHost {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(WaitlistEntry)
+    private readonly waitlistRepo: Repository<WaitlistEntry>,
     @InjectRepository(ShareEvent)
     private readonly shareRepo: Repository<ShareEvent>,
     private readonly notificationsService: NotificationsService,
@@ -22,7 +25,7 @@ export class ShareProcessor extends WorkerHost {
   }
 
   async process(job: any): Promise<void> {
-    const { shareEventId, userId, platform } = job.data;
+    const { shareEventId, userId, platform, sharerType } = job.data;
 
     try {
       // Simulate share verification (in real app, this would check social media APIs)
@@ -30,7 +33,7 @@ export class ShareProcessor extends WorkerHost {
 
       const shareEvent = await this.shareRepo.findOne({
         where: { id: shareEventId },
-        relations: ['user'],
+        relations: sharerType === 'user' ? ['user'] : ['waitlistEntry'],
       });
 
       if (!shareEvent) {
@@ -46,29 +49,36 @@ export class ShareProcessor extends WorkerHost {
         // Save share event first
         await this.shareRepo.save(shareEvent);
 
-        // Update user points directly via query builder to ensure proper persistence
-        const updateResult = await this.userRepo
-          .createQueryBuilder('user')
-          .update(User)
-          .set({ points: () => `points + ${points}` })
-          .where('id = :userId', { userId: shareEvent.user.id })
-          .execute();
+        // Update points based on sharer type
+        if (sharerType === 'user' && shareEvent.user) {
+          // Update registered user points
+          await this.userRepo
+            .createQueryBuilder('user')
+            .update(User)
+            .set({ points: () => `points + ${points}` })
+            .where('id = :userId', { userId: shareEvent.user.id })
+            .execute();
 
-        // Reload user to get updated points
-        const updatedUser = await this.userRepo.findOne({
-          where: { id: shareEvent.user.id },
-          select: ['id', 'points'],
-        });
+          // Notify user of points awarded
+          this.notificationsService.notifyShareVerified(shareEvent.user.id, platform, points).catch(() => {});
+        } else if (sharerType === 'waitlist' && shareEvent.waitlistEntry) {
+          // Update waitlist user points
+          await this.waitlistRepo
+            .createQueryBuilder('waitlist')
+            .update(WaitlistEntry)
+            .set({ points: () => `points + ${points}` })
+            .where('id = :waitlistId', { waitlistId: shareEvent.waitlistEntry.id })
+            .execute();
 
-        // Notify user of points awarded
-        this.notificationsService.notifyShareVerified(shareEvent.user.id, platform, points).catch(() => {});
+          // Note: Waitlist users don't get notifications until they sign up
+        }
       } else {
         shareEvent.verified = false;
         shareEvent.pointsAwarded = 0;
         await this.shareRepo.save(shareEvent);
       }
 
-      this.logger.log(`Share verification completed for user ${userId} on ${platform}`);
+      this.logger.log(`Share verification completed for ${sharerType} ${userId} on ${platform}`);
     } catch (error) {
       this.logger.error(`Share verification failed for job ${job.id}`, error);
       throw error;
