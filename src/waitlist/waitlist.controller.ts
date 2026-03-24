@@ -11,7 +11,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard, SkipThrottle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -141,6 +141,7 @@ export class WaitlistController {
 
   @Get('count')
   @Public()
+  @SkipThrottle()
   @ApiOperation({ summary: 'Get total count of reserved usernames' })
   @ApiResponse({
     status: 200,

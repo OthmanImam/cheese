@@ -103,7 +103,7 @@ export class NotificationsService {
       type: NotificationType.MILESTONE_REACHED,
       title: 'Milestone Unlocked!',
       body: `Congratulations! You've reached: ${milestone}`,
-      deepLink: '/waitlist/leaderboard',
+      deepLink: '/leaderboard',
     });
   }
 
@@ -124,7 +124,7 @@ export class NotificationsService {
       type: NotificationType.LEADERBOARD_UPDATE,
       title: `Rank ${direction}!`,
       body: `Your leaderboard position changed from #${oldRank} to #${newRank}`,
-      deepLink: '/waitlist/leaderboard',
+      deepLink: '/leaderboard',
     });
   }
 

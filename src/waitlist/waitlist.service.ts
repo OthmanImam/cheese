@@ -274,6 +274,41 @@ export class WaitlistService {
     });
     await this.shareRepo.save(shareEvent);
 
+    // For development: award points synchronously instead of queuing
+    const points = PLATFORM_POINTS[platform as SharePlatform] ?? 0;
+    
+    if (points > 0) {
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      
+      try {
+        if (sharerType === 'user') {
+          await queryRunner.manager.increment(User, { id: userId }, 'points', points);
+        } else {
+          await queryRunner.manager.increment(WaitlistEntry, { id: userId }, 'points', points);
+        }
+        
+        // Update share event as verified
+        await queryRunner.manager.update(ShareEvent, shareEvent.id, {
+          verified: true,
+          pointsAwarded: points,
+        });
+        
+        await queryRunner.commitTransaction();
+        
+        this.logger.log(
+          `Share points awarded synchronously [${sharerType}=${userId}] [platform=${platform}] [points=${points}]`,
+        );
+      } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw err;
+      } finally {
+        await queryRunner.release();
+      }
+    }
+
+    // Still add to queue for production processing (when Redis is available)
     if (this.shareQueue) {
       await this.shareQueue.add(
         'verify-share',
@@ -295,8 +330,8 @@ export class WaitlistService {
     return {
       success: true,
       shareEventId: shareEvent.id,
-      message: 'Share recorded. Points will be awarded after verification.',
-      pendingPoints: PLATFORM_POINTS[platform as SharePlatform] ?? 0,
+      message: 'Share recorded and points awarded!',
+      pendingPoints: points,
     };
   }
 

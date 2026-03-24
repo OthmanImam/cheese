@@ -93,7 +93,7 @@ export const ENDPOINTS: any = {
   },
   WAITLIST: {
     REGISTER: '/waitlist/register',
-    LEADERBOARD: '/waitlist/leaderboard',
+    LEADERBOARD: '/leaderboard',
     CHECK_USERNAME: (username: string) => `/waitlist/check-username/${username}`,
     SHARE: '/waitlist/share',
     REFERRAL: '/waitlist/referral',
