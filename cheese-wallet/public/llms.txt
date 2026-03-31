@@ -1,0 +1,28 @@
+# Cheese Pay
+
+> Cheese Pay is a USD wallet where you can leave your money is stable currencies and spend in local currency of youthe country you live in starting from Nigeria.
+>Your username is Also your bank account.
+> Send money to anyone using just @theirname — no account numbers,
+> no sort codes, no routing numbers. Settle instantly in Naira or USDC.
+> Works on Ethereum Wallets and Stellar blockchain.
+> Available in Nigeria.
+
+## What Cheese Pay does
+- Username-based payments — send money with @username not account numbers
+- USDC stablecoin wallet with Naira settlement
+- QR code payments for merchants
+- Earn yield on idle USDC balance
+- Cheese Black tier — zero fees, metal card, invite only
+- Cheese Gold tier — higher limits, priority support
+
+## Who it's for
+- Nigerians who want to send and receive USD or Naira instantly
+- Freelancers getting paid internationally
+- Businesses accepting payments without sharing bank details
+- Anyone tired of bank transfer friction
+
+## Waitlist
+- https://cheesepay.xyz/
+
+## Contact
+- https://cheesepay.xyz
