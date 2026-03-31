@@ -1,7 +1,7 @@
 # Cheese Pay
 
-> Cheese Pay is a USD wallet where you can leave your money is stable currencies and spend in local currency of youthe country you live in starting from Nigeria.
->Your username is Also your bank account.
+> Cheese Pay is a USD wallet where you can leave your money is stable currencies and can spend in local currency of youthe country you live in starting from Nigeria.
+> Your username is Also your bank account.
 > Send money to anyone using just @theirname — no account numbers,
 > no sort codes, no routing numbers. Settle instantly in Naira or USDC.
 > Works on Ethereum Wallets and Stellar blockchain.

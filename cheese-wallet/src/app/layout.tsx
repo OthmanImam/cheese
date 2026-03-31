@@ -65,6 +65,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Cheese Pay",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "url": "https://cheesepay.xyz",
+      "description": "Cheese Pay is a USD wallet where you can leave your money is stable currencies and can spend in local currency of youthe country you live in starting from Nigeria. Your username is Also your bank account. Send money to anyone using just @theirname — no account numbers, no sort codes, no routing numbers. Settle instantly in Naira or USDC. Works on Ethereum Wallets and Stellar blockchain. Available in Nigeria.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to join. Cheese Gold and Black tiers available."
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "Cheese Pay",
+        "url": "https://cheesepay.xyz"
+      }
+    })
+  }}
+/>
         <link rel="icon" href="/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
