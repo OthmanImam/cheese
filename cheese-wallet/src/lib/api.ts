@@ -238,16 +238,10 @@ export async function getUserRank(userId: string): Promise<RankResponse> {
 // }
 
 export async function getReservedUsernamesCount(): Promise<number> {
-  try {
-    const { data } = await api.get<any>('/waitlist/count');
-    
-    // Response shape: { success: true, data: 4 }
-    if (typeof data?.data === 'number') return data.data;
-    if (typeof data === 'number') return data;
-
-    return 0;
-  } catch (error: any) {
-    console.error('[getReservedUsernamesCount] Error:', error);
-    return 0;
-  }
+  const { data } = await api.get<any>('/waitlist/count');
+  
+  const value = data?.data ?? data;
+  if (typeof value === 'number') return value;
+  
+  throw new Error('Invalid response format for count');
 }
