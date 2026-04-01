@@ -173,7 +173,7 @@ export class EmailService {
     const { subject, html } = moneyReceived({
       ...params,
       fullName: params.fullName || 'User',
-      appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
+      appUrl: params.appUrl || 'https://cheesewallet.app',
     });
     await this.send({ to: params.to, subject, html });
   }
@@ -194,7 +194,7 @@ export class EmailService {
     const { subject, html } = moneySent({
       ...params,
       fullName: params.fullName || 'User',
-      appUrl: params.appUrl || 'https://cheesepay.xyz/wallet',
+      appUrl: params.appUrl || 'https://cheesepay.xyz',
     });
     await this.send({ to: params.to, subject, html });
   }
@@ -232,7 +232,7 @@ export class EmailService {
     const { subject, html } = kycApproved({
       fullName: params.fullName,
       tier: params.tier,
-      appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
+      appUrl: params.appUrl || 'https://cheesewallet.app',
       benefits: tierBenefits[params.tier.toLowerCase()] || tierBenefits.silver,
     });
     await this.send({ to: params.to, subject, html });
@@ -267,7 +267,7 @@ export class EmailService {
       fullName: params.fullName,
       fromTier: params.fromTier,
       toTier: params.toTier,
-      appUrl: params.appUrl || 'https://cheesewallet.app/wallet',
+      appUrl: params.appUrl || 'https://cheesewallet.app',
       benefits: tierUpgradeBenefits[params.toTier.toLowerCase()] || [],
     });
     await this.send({ to: params.to, subject, html });
