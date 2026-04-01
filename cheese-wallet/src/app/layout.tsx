@@ -75,8 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       "applicationCategory": "FinanceApplication",
       "operatingSystem": "Web, iOS, Android",
       "url": "https://cheesepay.xyz",
-      "description": "Cheese Pay is a USD wallet where you can leave your money is stable currencies and can spend in local currency of youthe country you live in starting from Nigeria. Your username is Also your bank account. Send money to anyone using just @theirname — no account numbers, no sort codes, no routing numbers. Settle instantly in Naira or USDC. Works on Ethereum Wallets and Stellar blockchain. Available in Nigeria.",
-      "offers": {
+"description": "Cheese Pay lets Nigerians hold money in USDC and send directly to any Nigerian bank account number in Naira. Protect your savings from naira devaluation without losing the ability to transact locally."      "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD",
