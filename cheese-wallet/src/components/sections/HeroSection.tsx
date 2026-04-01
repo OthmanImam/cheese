@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getReservedUsernamesCount } from '@/lib/api';
 
 const USERNAMES = [
@@ -51,45 +51,55 @@ export function HeroSection() {
   const [displayCount, setDisplayCount] = useState(0);
   const [target, setTarget] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const prevTargetRef = useRef(0);
 
   const fetchCount = async () => {
     try {
       const count = await getReservedUsernamesCount();
 
       if (!Number.isFinite(count) || count < 0) {
-        throw new Error('Invalid count value from API');
+        return; // Ignore invalid values
       }
 
       setTarget(count);
-      setDisplayCount(0);
       setErrorMessage(null);
     } catch (error) {
       console.error('Failed to fetch reserved usernames count:', error);
-      setTarget(0);
+      // Keep previous target on error
       setErrorMessage('Could not load reserved usernames count.');
     }
   };
 
   useEffect(() => {
-    fetchCount();
+    if (target === 0 || target === prevTargetRef.current) return;
 
+    const startValue = prevTargetRef.current;
+    const diff = target - startValue;
+    const duration = 1800;
+    const startTime = Date.now();
+
+    const tick = setInterval(() => {
+      const now = Date.now();
+      const t = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      
+      setDisplayCount(Math.floor(startValue + eased * diff));
+
+      if (t >= 1) {
+        clearInterval(tick);
+        prevTargetRef.current = target;
+      }
+    }, 16);
+
+    return () => clearInterval(tick);
+  }, [target]);
+
+  // Initial fetch and periodic refresh
+  useEffect(() => {
+    fetchCount();
     const interval = setInterval(fetchCount, 30_000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (target === 0) return;
-
-    const duration = 1800;
-    const start = Date.now();
-    const tick = setInterval(() => {
-      const t = Math.min((Date.now() - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplayCount(Math.floor(eased * target));
-      if (t >= 1) clearInterval(tick);
-    }, 16);
-    return () => clearInterval(tick);
-  }, [target]);
 
   return (
     <section className="relative pt-32 pb-16 px-6 text-center">
