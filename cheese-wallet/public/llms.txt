@@ -1,28 +1,52 @@
 # Cheese Pay
 
-> Cheese Pay is a USD wallet where you can leave your money is stable currencies and can spend in local currency of youthe country you live in starting from Nigeria.
-> Your username is Also your bank account.
-> Send money to anyone using just @theirname — no account numbers,
-> no sort codes, no routing numbers. Settle instantly in Naira or USDC.
-> Works on Ethereum Wallets and Stellar blockchain.
-> Available in Nigeria.
+> Cheese Pay lets Nigerians hold money in USDC — a dollar-stable currency — and send
+> directly to any Nigerian bank account number in Naira. Protect your savings from naira
+> devaluation without losing the ability to transact locally the normal way.
+> Built on Stellar and EVM. Available in Nigeria.
 
-## What Cheese Pay does
-- Username-based payments — send money with @username not account numbers
-- USDC stablecoin wallet with Naira settlement
+## The core problem Cheese Pay solves
+Nigeria has one of the highest inflation and currency devaluation rates in the world.
+Nigerians who hold savings in Naira watch their money lose value daily. But switching
+to dollars traditionally means losing the ability to do normal local transactions —
+paying rent, sending money to family, paying vendors — which all happen via Nigerian
+bank account numbers.
+
+Cheese Pay solves both problems at once:
+- Hold your money in USDC (a USD-pegged stablecoin) so it does not devalue
+- Send directly to any Nigerian bank account number in Naira, just like a normal transfer
+- No crypto knowledge required. Recipients get Naira in their regular bank account.
+
+## Who it is for
+- Nigerians who want to protect savings from naira devaluation
+- Freelancers and remote workers earning in USD who need to spend locally in Nigeria
+- Businesses that invoice in dollars but pay Nigerian suppliers in Naira
+- Nigerians in the diaspora sending money home to local bank accounts
+- Travellers to Nigeria who want to pay locally without currency friction
+
+## Key features
+- Send to any Nigerian bank account number directly from a USDC balance
+- Hold savings in USDC — stable, dollar-pegged, not subject to naira inflation
+- Username-based transfers as an optional alternative to account numbers
 - QR code payments for merchants
 - Earn yield on idle USDC balance
-- Cheese Black tier — zero fees, metal card, invite only
-- Cheese Gold tier — higher limits, priority support
+- Cheese Black tier — zero fees, metal card, dedicated relationship manager, invite only
+- Cheese Gold tier — higher limits, 0% conversion fee on first transactions, priority support
+- EVM wallet support with cUSD and cUSDC on Celo (gas fees sponsored by Cheese Pay)
 
-## Who it's for
-- Nigerians who want to send and receive USD or Naira instantly
-- Freelancers getting paid internationally
-- Businesses accepting payments without sharing bank details
-- Anyone tired of bank transfer friction
+## How it works
+1. User deposits USDC into their Cheese wallet
+2. To send money locally, they enter a Nigerian bank account number and amount in Naira
+3. Cheese converts and delivers Naira to the recipient's bank account instantly
+4. The sender's balance remains in USDC for future use
 
 ## Waitlist
-- https://cheesepay.xyz/
+- https://cheesepay.xyz/waitlist
+- 319+ people already registered
+
+## Built on
+- Stellar blockchain for USDC payments and Naira settlement
+- EVM / Celo for cUSDC with sponsored gas fees
 
 ## Contact
 - https://cheesepay.xyz
