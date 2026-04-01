@@ -75,7 +75,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       "applicationCategory": "FinanceApplication",
       "operatingSystem": "Web, iOS, Android",
       "url": "https://cheesepay.xyz",
-"description": "Cheese Pay lets Nigerians hold money in USDC and send directly to any Nigerian bank account number in Naira. Protect your savings from naira devaluation without losing the ability to transact locally."      "offers": {
+"description": "Cheese Pay lets Nigerians hold money in USDC and send directly to any Nigerian bank account number in Naira. Protect your savings from naira devaluation without losing the ability to transact locally.",
+    "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD",
