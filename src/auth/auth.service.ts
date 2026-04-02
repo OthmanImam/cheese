@@ -124,7 +124,8 @@ export class AuthService {
 
     // Create Stellar custodial wallet
     try {
-      const wallet = await this.blockchainService.createStellarWallet();
+      const wallet1 = await this.blockchainService.createStellarWallet();
+      const wallet2 = await this.blockchainService.createEvmWallet();
       await this.blockchainService.ensureTrustline(wallet.secretKeyEnc);
       user.stellarPublicKey = wallet.publicKey;
       user.stellarSecretEnc = wallet.secretKeyEnc;
