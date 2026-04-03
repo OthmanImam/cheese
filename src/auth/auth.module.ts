@@ -17,6 +17,9 @@ import { JwtAccessStrategy } from './strategies/jwt-access.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { WaitlistEntry } from '../waitlist/entities/waitlist-entry.entity';
 import { ReferralEvent } from '../waitlist/entities/referral-event.entity';
+import { BullModule } from '@nestjs/bullmq';
+import { WalletCreationProcessor } from './processors/wallet-creation.processor';
+
 
 @Module({
   imports: [
@@ -30,7 +33,7 @@ import { ReferralEvent } from '../waitlist/entities/referral-event.entity';
     WaitlistModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy],
+  providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy, WalletCreationProcessor],
   exports: [AuthService, TypeOrmModule, WaitlistModule],
 })
 export class AuthModule {}
