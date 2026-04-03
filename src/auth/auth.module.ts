@@ -23,7 +23,12 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken, Device, WaitlistEntry, ReferralEvent]),
+    TypeOrmModule.forFeature([User, 
+                              RefreshToken, 
+                              Device, 
+                              WaitlistEntry, 
+                              ReferralEvent,  
+                              BullModule.registerQueue({ name: 'wallet-creation' })]),
     PassportModule,
     JwtModule.register({}), // secrets supplied per sign() call
     OtpModule,
