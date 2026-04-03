@@ -11,7 +11,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import * as bcrypt from 'bcrypt';
+import { ethers } from 'ethers';
 import { createHash, timingSafeEqual } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
@@ -37,271 +40,298 @@ import { nanoid } from 'nanoid';
 
 const BCRYPT_ROUNDS = 12;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Wallet retry job payload
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WalletCreationJobData {
+  userId: string;
+  username: string;
+  /** Which chains still need wallets created */
+  chains: Array<'stellar' | 'evm'>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly rtRepo: Repository<RefreshToken>,
-    @InjectRepository(Device) private readonly deviceRepo: Repository<Device>,
-    @InjectRepository(WaitlistEntry) private readonly waitlistRepo: Repository<WaitlistEntry>,
-    @InjectRepository(ReferralEvent) private readonly referralEventRepo: Repository<ReferralEvent>,
+    @InjectRepository(Device)
+    private readonly deviceRepo: Repository<Device>,
+    @InjectRepository(WaitlistEntry)
+    private readonly waitlistRepo: Repository<WaitlistEntry>,
+    @InjectRepository(ReferralEvent)
+    private readonly referralEventRepo: Repository<ReferralEvent>,
+
+    @InjectQueue('wallet-creation')
+    private readonly walletQueue: Queue,
+
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
     private readonly blockchainService: BlockchainService,
-    
     private readonly emailService: EmailService,
     private readonly waitlistService: WaitlistService,
   ) {}
 
-  // ── Signup ────────────────────────────────────────────────
+  // ── Signup ─────────────────────────────────────────────────────────────────
+
   async signup(dto: SignupDto): Promise<{ userId: string; email: string }> {
-    // Check if user already exists in User table
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.email, emailVerified: true },
     });
+    if (existingUser) throw new ConflictException('Email already registered');
 
-    if (existingUser) {
-      throw new ConflictException('Email already registered');
-    }
-
-    // Check if email/username is on waitlist
     const waitlistEntry = await this.waitlistRepo.findOne({
       where: { email: dto.email },
     });
 
     if (waitlistEntry) {
-      // Verify username matches reservation
       if (waitlistEntry.username !== dto.username) {
         throw new ConflictException('Username does not match waitlist reservation');
       }
       if (waitlistEntry.status === WaitlistStatus.CONVERTED) {
         throw new ConflictException('This email has already been converted');
       }
-      // User is reserving from waitlist — create full User entry
       return this.createUserFromWaitlist(dto, waitlistEntry);
     }
 
-    // Only waitlist users can sign up
     throw new ForbiddenException('Signup is currently restricted to waitlist users only');
   }
+
+  // ── Create user from waitlist ──────────────────────────────────────────────
 
   private async createUserFromWaitlist(
     dto: SignupDto,
     waitlistEntry: WaitlistEntry,
   ): Promise<{ userId: string; email: string }> {
-    // Check for email/phone/username conflicts before creating user
-    const phoneExists = await this.userRepo.findOne({
-      where: { phone: dto.phone },
-    });
+    // Conflict checks
+    const phoneExists = await this.userRepo.findOne({ where: { phone: dto.phone } });
     if (phoneExists) throw new ConflictException('Phone already registered');
 
-    const usernameExists = await this.userRepo.findOne({
-      where: { username: dto.username },
-    });
+    const usernameExists = await this.userRepo.findOne({ where: { username: dto.username } });
     if (usernameExists) throw new ConflictException('Username taken');
 
-    const emailExists = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const emailExists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (emailExists) throw new ConflictException('Email already registered');
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    // Create user
     const user = this.userRepo.create({
-      fullName: dto.fullName,
-      email: dto.email,
-      phone: dto.phone,
-      username: dto.username,
+      fullName:     dto.fullName,
+      email:        dto.email,
+      phone:        dto.phone,
+      username:     dto.username,
       passwordHash,
       referralCode: nanoid(8),
-      referredBy: waitlistEntry.referrerId || null,
+      referredBy:   waitlistEntry.referrerId || null,
+      points:       waitlistEntry.points,
     });
 
-    // Create Stellar custodial wallet
+    // ── Wallet creation (both chains) ─────────────────────────────────────
+    // Each chain is attempted independently. If either fails the user is still
+    // created and a BullMQ retry job is queued for the failed chain(s).
+    const failedChains: Array<'stellar' | 'evm'> = [];
+
+    // Stellar
     try {
-      const wallet1 = await this.blockchainService.createStellarWallet();
-      const wallet2 = await this.blockchainService.createEvmWallet();
-      await this.blockchainService.ensureTrustline(wallet.secretKeyEnc);
-      user.stellarPublicKey = wallet.publicKey;
-      user.stellarSecretEnc = wallet.secretKeyEnc;
+      // createStellarWallet() funds the account AND establishes the USDC
+      // trustline internally — do NOT call ensureTrustline separately.
+      const stellarWallet = await this.blockchainService.createStellarWallet();
+      user.stellarPublicKey = stellarWallet.publicKey;
+      user.stellarSecretEnc = stellarWallet.secretKeyEnc;
+      this.logger.log(`Stellar wallet created [user=${dto.username}] [pk=${stellarWallet.publicKey}]`);
     } catch (err) {
       this.logger.error(
-        `Stellar wallet creation failed: ${(err as Error).message}`,
+        `Stellar wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
       );
-      // Don't block signup — wallet can be retried
+      failedChains.push('stellar');
+      // user.stellarPublicKey / stellarSecretEnc remain null — retried by job
     }
 
-    // Transfer points from waitlist entry to user
-    user.points = waitlistEntry.points;
+    // EVM — generate a custodial keypair for the user, then register it on the contract
+    try {
+      // For custodial EVM wallets: the platform generates a fresh keypair.
+      // The user's EVM address is derived from this keypair.
+      // In a non-custodial flow the user would provide their own address.
+      const evmKeypair = ethers.Wallet.createRandom();
+
+      const evmResult = await this.blockchainService.createEvmWallet(
+        evmKeypair.address,
+        dto.username,
+      );
+
+      user.evmAddress = evmResult.walletAddress; // contract-managed wallet address
+      this.logger.log(
+        `EVM wallet created [user=${dto.username}]` +
+        ` [contractWallet=${evmResult.walletAddress}] [txHash=${evmResult.txHash}]`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `EVM wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
+      );
+      failedChains.push('evm');
+      // user.evmAddress remains null — retried by job
+    }
 
     await this.userRepo.save(user);
 
-    // Award referral points if referred by someone
-    if (waitlistEntry.referrerId) {
-      try {
-        // Check if referrer is a user or waitlist entry
-        const referrerUser = await this.userRepo.findOne({
-          where: { id: waitlistEntry.referrerId },
-        });
-
-        if (referrerUser) {
-          // Referrer is a registered user
-          await this.userRepo.increment(
-            { id: waitlistEntry.referrerId },
-            'points',
-            REFERRAL_POINTS,
-          );
-
-          // Record the referral event
-          await this.referralEventRepo.save(
-            this.referralEventRepo.create({
-              referrerUserId: waitlistEntry.referrerId,
-              referredUserId: user.id,
-              referredType: 'user',
-              pointsAwarded: REFERRAL_POINTS,
-            }),
-          );
-
-          this.logger.log(
-            `User referral points awarded [referrerUser=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
-          );
-        } else {
-          // Referrer is still in waitlist
-          await this.waitlistRepo.increment(
-            { id: waitlistEntry.referrerId },
-            'points',
-            REFERRAL_POINTS,
-          );
-
-          // Record the referral event
-          await this.referralEventRepo.save(
-            this.referralEventRepo.create({
-              referrerWaitlistId: waitlistEntry.referrerId,
-              referredUserId: user.id,
-              referredType: 'user',
-              pointsAwarded: REFERRAL_POINTS,
-            }),
-          );
-
-          this.logger.log(
-            `Waitlist-to-user referral points awarded [referrerWaitlist=${waitlistEntry.referrerId}] [newUser=${user.id}] [points=${REFERRAL_POINTS}]`,
-          );
-        }
-      } catch (err) {
-        this.logger.error(
-          `Failed to award referral points: ${(err as Error).message}`,
-        );
-        // Don't block signup
-      }
+    // Queue retry job if any chain failed — exponential backoff, 5 attempts
+    if (failedChains.length > 0) {
+      await this.walletQueue.add(
+        'retry-wallet-creation',
+        { userId: user.id, username: user.username, chains: failedChains } satisfies WalletCreationJobData,
+        {
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 10_000 }, // 10s, 20s, 40s, 80s, 160s
+          removeOnComplete: true,
+          removeOnFail: false, // keep failed jobs visible for inspection
+        },
+      );
+      this.logger.warn(
+        `Wallet creation queued for retry [user=${user.id}] [chains=${failedChains.join(',')}]`,
+      );
     }
 
-    // Mark waitlist entry as converted
+    // ── Referral points ───────────────────────────────────────────────────
+    if (waitlistEntry.referrerId) {
+      await this.awardReferralPoints(waitlistEntry.referrerId, user.id);
+    }
+
+    // ── Mark waitlist entry as converted ──────────────────────────────────
     await this.waitlistRepo.update(
       { id: waitlistEntry.id },
       { status: WaitlistStatus.CONVERTED, convertedAt: new Date() },
     );
 
-    // Register the device
+    // ── Register device ───────────────────────────────────────────────────
     await this.deviceRepo.save(
       this.deviceRepo.create({
-        userId: user.id,
-        deviceId: dto.deviceId,
-        publicKey: dto.devicePublicKey,
+        userId:     user.id,
+        deviceId:   dto.deviceId,
+        publicKey:  dto.devicePublicKey,
         deviceName: 'Primary Device',
       }),
     );
 
-    // Send email verification OTP
+    // ── Send verification OTP ─────────────────────────────────────────────
     const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
       fullName: dto.fullName,
     });
-    this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
+    this.logger.log(`OTP sent [email=${dto.email}] [otp=${otpCode}]`);
 
     return { userId: user.id, email: user.email };
   }
 
+  // ── Create new user (non-waitlist path) ────────────────────────────────────
+
   private async createNewUser(dto: SignupDto): Promise<{ userId: string; email: string }> {
-    // Check for email/phone/username conflicts
-    const phoneExists = await this.userRepo.findOne({
-      where: { phone: dto.phone },
-    });
+    const phoneExists = await this.userRepo.findOne({ where: { phone: dto.phone } });
     if (phoneExists) throw new ConflictException('Phone already registered');
 
-    const usernameExists = await this.userRepo.findOne({
-      where: { username: dto.username },
-    });
+    const usernameExists = await this.userRepo.findOne({ where: { username: dto.username } });
     if (usernameExists) throw new ConflictException('Username taken');
 
-    const emailExists = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const emailExists = await this.userRepo.findOne({ where: { email: dto.email } });
     if (emailExists) throw new ConflictException('Email already registered');
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    // Create user
     const user = this.userRepo.create({
-      fullName: dto.fullName,
-      email: dto.email,
-      phone: dto.phone,
-      username: dto.username,
+      fullName:     dto.fullName,
+      email:        dto.email,
+      phone:        dto.phone,
+      username:     dto.username,
       passwordHash,
       referralCode: nanoid(8),
     });
 
-    // Create Stellar custodial wallet
+    const failedChains: Array<'stellar' | 'evm'> = [];
+
+    // Stellar
     try {
-      const wallet = await this.blockchainService.createStellarWallet();
-      await this.blockchainService.ensureTrustline(wallet.secretKeyEnc);
-      user.stellarPublicKey = wallet.publicKey;
-      user.stellarSecretEnc = wallet.secretKeyEnc;
+      const stellarWallet = await this.blockchainService.createStellarWallet();
+      user.stellarPublicKey = stellarWallet.publicKey;
+      user.stellarSecretEnc = stellarWallet.secretKeyEnc;
+      this.logger.log(`Stellar wallet created [user=${dto.username}] [pk=${stellarWallet.publicKey}]`);
     } catch (err) {
       this.logger.error(
-        `Stellar wallet creation failed: ${(err as Error).message}`,
+        `Stellar wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
       );
-      // Don't block signup — wallet can be retried
+      failedChains.push('stellar');
+    }
+
+    // EVM
+    try {
+      const evmKeypair = ethers.Wallet.createRandom();
+      const evmResult  = await this.blockchainService.createEvmWallet(
+        evmKeypair.address,
+        dto.username,
+      );
+      user.evmAddress = evmResult.walletAddress;
+      this.logger.log(
+        `EVM wallet created [user=${dto.username}] [contractWallet=${evmResult.walletAddress}]`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `EVM wallet creation failed [user=${dto.username}]: ${(err as Error).message}`,
+      );
+      failedChains.push('evm');
     }
 
     await this.userRepo.save(user);
 
-    // Register the device
+    if (failedChains.length > 0) {
+      await this.walletQueue.add(
+        'retry-wallet-creation',
+        { userId: user.id, username: user.username, chains: failedChains } satisfies WalletCreationJobData,
+        {
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 10_000 },
+          removeOnComplete: true,
+          removeOnFail: false,
+        },
+      );
+    }
+
     await this.deviceRepo.save(
       this.deviceRepo.create({
-        userId: user.id,
-        deviceId: dto.deviceId,
-        publicKey: dto.devicePublicKey,
+        userId:     user.id,
+        deviceId:   dto.deviceId,
+        publicKey:  dto.devicePublicKey,
         deviceName: 'Primary Device',
       }),
     );
 
-    // Send email verification OTP
     const otpCode = await this.otpService.sendOtp(dto.email, OtpType.EMAIL_VERIFY, {
       fullName: dto.fullName,
     });
-    this.logger.log(`OTP sent to ${dto.email} for signup: ${otpCode}`);
+    this.logger.log(`OTP sent [email=${dto.email}] [otp=${otpCode}]`);
 
     return { userId: user.id, email: user.email };
   }
 
-  // ── Verify OTP ───────────────────────────────────────────
+  // ── Verify OTP ─────────────────────────────────────────────────────────────
+
   async verifyOtp(dto: VerifyOtpDto): Promise<{ verified: boolean }> {
     await this.otpService.verifyOtp(dto.email, dto.otp, dto.type);
 
     if (dto.type === OtpType.EMAIL_VERIFY) {
-      const user = await this.userRepo.findOne({ where: { email: dto.email } });
       await this.userRepo.update({ email: dto.email }, { emailVerified: true });
+      const user = await this.userRepo.findOne({ where: { email: dto.email } });
       if (user) {
         this.emailService
           .sendSignupSuccess({
-            to: user.email,
+            to:       user.email,
             fullName: user.fullName,
             username: user.username,
-            appUrl: this.config.get('app.frontendUrl') + '/wallet',
+            appUrl:   this.config.get('app.frontendUrl') + '/wallet',
           })
           .catch(() => {});
       }
@@ -310,28 +340,27 @@ export class AuthService {
     return { verified: true };
   }
 
-  // ── Resend OTP ────────────────────────────────────────────
+  // ── Resend OTP ─────────────────────────────────────────────────────────────
+
   async resendOtp(email: string, type: OtpType): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new NotFoundException('User not found');
     await this.otpService.sendOtp(email, type);
   }
 
-  // ── Login ────────────────────────────────────────────────
+  // ── Login ──────────────────────────────────────────────────────────────────
+
   async login(dto: LoginDto, meta: { userAgent?: string; ip?: string }) {
-    // Find user by email or username
     const user = await this.userRepo.findOne({
       where: [{ email: dto.identifier }, { username: dto.identifier }],
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (!user.isActive) throw new ForbiddenException('Account suspended');
 
-    // Verify password
     if (!user.passwordHash) throw new UnauthorizedException('Invalid credentials');
     const passwordOk = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordOk) throw new UnauthorizedException('Invalid credentials');
 
-    // Verify device signature
     const device = await this.deviceRepo.findOne({
       where: { deviceId: dto.deviceId, userId: user.id, isActive: true },
     });
@@ -340,72 +369,66 @@ export class AuthService {
     const signatureValid = this.blockchainService.verifyDeviceSignature({
       publicKey: device.publicKey,
       signature: dto.deviceSignature,
-      message: dto.deviceId, // client signs their own deviceId
+      message:   dto.deviceId,
     });
-    // In development, skip signature check to ease testing
     if (!signatureValid && this.config.get('app.nodeEnv') === 'production') {
       throw new UnauthorizedException('Invalid device signature');
     }
 
-    // Update device last seen
     await this.deviceRepo.update({ id: device.id }, { lastSeen: new Date() });
 
     const tokens = await this.issueTokens(user, dto.deviceId, meta);
     return { user: this.sanitiseUser(user), tokens };
   }
 
-  // ── Refresh tokens ───────────────────────────────────────
+  // ── Refresh tokens ─────────────────────────────────────────────────────────
+
   async refresh(
     user: User,
     oldTokenHash: string,
     meta: { userAgent?: string; ip?: string },
   ) {
-    // Revoke the used refresh token (rotation)
     await this.rtRepo.update({ tokenHash: oldTokenHash }, { isRevoked: true });
     const tokens = await this.issueTokens(user, null, meta);
     return { accessToken: tokens.accessToken };
   }
 
-  // ── Logout ────────────────────────────────────────────────
+  // ── Logout ─────────────────────────────────────────────────────────────────
+
   async logout(userId: string, tokenHash: string): Promise<void> {
     await this.rtRepo.update({ userId, tokenHash }, { isRevoked: true });
   }
 
-  // ── Forgot password ───────────────────────────────────────
+  // ── Forgot password ────────────────────────────────────────────────────────
+
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
-    // Don't reveal if user exists
-    if (!user) return;
+    if (!user) return; // don't reveal existence
     await this.otpService.sendOtp(dto.email, OtpType.PASSWORD_RESET);
   }
 
-  // ── Reset password ────────────────────────────────────────
+  // ── Reset password ─────────────────────────────────────────────────────────
+
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
     await this.otpService.verifyOtp(dto.email, dto.otp, OtpType.PASSWORD_RESET);
+
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     await this.userRepo.update({ email: dto.email }, { passwordHash });
-    // Notify user of password change
-    const pwUser = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (pwUser) {
+
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (user) {
       this.emailService
-        .sendPasswordChanged({ to: dto.email, fullName: pwUser.fullName })
+        .sendPasswordChanged({ to: dto.email, fullName: user.fullName })
         .catch(() => {});
+
+      // Revoke all refresh tokens on password change
+      await this.rtRepo.update({ userId: user.id }, { isRevoked: true });
     }
-    // Revoke all refresh tokens on password change
-    await this.rtRepo.update(
-      {
-        userId: (await this.userRepo.findOne({ where: { email: dto.email } }))
-          ?.id,
-      },
-      { isRevoked: true },
-    );
   }
 
-  // ── Verify PIN ────────────────────────────────────────────
-  async verifyPin(
-    userId: string,
-    dto: VerifyPinDto,
-  ): Promise<{ valid: boolean }> {
+  // ── Verify PIN ─────────────────────────────────────────────────────────────
+
+  async verifyPin(userId: string, dto: VerifyPinDto): Promise<{ valid: boolean }> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     if (!user.pinHash) throw new BadRequestException('PIN not set');
@@ -414,20 +437,17 @@ export class AuthService {
       Buffer.from(user.pinHash),
       Buffer.from(dto.pinHash),
     );
-    if (!isValid) {
-      const err = new ForbiddenException('Incorrect PIN');
-      throw err;
-    }
+    if (!isValid) throw new ForbiddenException('Incorrect PIN');
 
     return { valid: true };
   }
 
-  // ── Change PIN ────────────────────────────────────────────
+  // ── Change PIN ─────────────────────────────────────────────────────────────
+
   async changePin(userId: string, dto: ChangePinDto): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    // If pin already set, verify current pin first
     if (user.pinHash) {
       const isValid = timingSafeEqual(
         Buffer.from(user.pinHash),
@@ -439,42 +459,82 @@ export class AuthService {
     await this.userRepo.update({ id: userId }, { pinHash: dto.newPinHash });
   }
 
-  // ── Get current user ──────────────────────────────────────
+  // ── Get current user ───────────────────────────────────────────────────────
+
   getMe(user: User) {
     return this.sanitiseUser(user);
   }
 
-  // ── Token issuance ────────────────────────────────────────
+  // ── Private: award referral points ────────────────────────────────────────
+
+  private async awardReferralPoints(referrerId: string, newUserId: string): Promise<void> {
+    try {
+      const referrerUser = await this.userRepo.findOne({ where: { id: referrerId } });
+
+      if (referrerUser) {
+        await this.userRepo.increment({ id: referrerId }, 'points', REFERRAL_POINTS);
+        await this.referralEventRepo.save(
+          this.referralEventRepo.create({
+            referrerUserId: referrerId,
+            referredUserId: newUserId,
+            referredType:   'user',
+            pointsAwarded:  REFERRAL_POINTS,
+          }),
+        );
+        this.logger.log(
+          `Referral points awarded [referrer=${referrerId}] [newUser=${newUserId}] [pts=${REFERRAL_POINTS}]`,
+        );
+      } else {
+        // Referrer is still a waitlist entry
+        await this.waitlistRepo.increment({ id: referrerId }, 'points', REFERRAL_POINTS);
+        await this.referralEventRepo.save(
+          this.referralEventRepo.create({
+            referrerWaitlistId: referrerId,
+            referredUserId:     newUserId,
+            referredType:       'user',
+            pointsAwarded:      REFERRAL_POINTS,
+          }),
+        );
+        this.logger.log(
+          `Waitlist referral points awarded [referrer=${referrerId}] [newUser=${newUserId}] [pts=${REFERRAL_POINTS}]`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(`Failed to award referral points: ${(err as Error).message}`);
+      // Never block signup for referral failures
+    }
+  }
+
+  // ── Private: token issuance ────────────────────────────────────────────────
+
   private async issueTokens(
     user: User,
     deviceId: string | null,
     meta: { userAgent?: string; ip?: string },
   ) {
     const payload = {
-      sub: user.id,
-      email: user.email,
+      sub:      user.id,
+      email:    user.email,
       username: user.username,
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.config.get('jwt.accessSecret'),
+      secret:    this.config.get('jwt.accessSecret'),
       expiresIn: this.config.get('jwt.accessExpires'),
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: this.config.get('jwt.refreshSecret'),
+      secret:    this.config.get('jwt.refreshSecret'),
       expiresIn: this.config.get('jwt.refreshExpires'),
     });
 
     const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const parsed = this.jwtService.decode(refreshToken) as { exp: number };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const parsed    = this.jwtService.decode(refreshToken) as { exp: number };
     const expiresAt = new Date(parsed.exp * 1000);
 
     await this.rtRepo.save(
       this.rtRepo.create({
-        userId: user.id,
+        userId:    user.id,
         tokenHash,
         deviceId,
         expiresAt,
@@ -486,8 +546,9 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  // ── Private: sanitise user for API response ────────────────────────────────
+
   private sanitiseUser(user: User) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-unsafe-assignment
     const { passwordHash, pinHash, stellarSecretEnc, ...safe } = user as any;
     return safe as Omit<User, 'passwordHash' | 'pinHash' | 'stellarSecretEnc'>;
   }
