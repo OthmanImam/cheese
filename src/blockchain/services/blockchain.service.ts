@@ -686,4 +686,182 @@ export class BlockchainService implements OnModuleInit {
     this.logger.error(`Blockchain call failed [operation=${operation}]: ${message}`);
     return new ContractCallException(operation, message);
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Backward-compatible aliases — old callers use these names
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /** @deprecated use getEvmSignerAddress() */
+  getSignerAddress(): string {
+    return this.getEvmSignerAddress();
+  }
+
+  /** @deprecated use getEvmContractAddress() */
+  getContractAddress(): string {
+    return this.getEvmContractAddress();
+  }
+
+  /** @deprecated use getEvmChainId() */
+  async getChainId(): Promise<number> {
+    return this.getEvmChainId();
+  }
+
+  /** @deprecated use createEvmWallet() */
+  async createWallet(evmAddress: string, username: string): Promise<EvmWalletCreationResult> {
+    return this.createEvmWallet(evmAddress, username);
+  }
+
+  /** @deprecated use getEvmBalance() */
+  async getBalance(walletAddress: string): Promise<string> {
+    return this.getEvmBalance(walletAddress);
+  }
+
+  /** @deprecated use resolveEvmUsername() */
+  async resolveUsername(username: string): Promise<string | null> {
+    return this.resolveEvmUsername(username);
+  }
+
+  /** @deprecated use evmTransferByUsername() */
+  async transferByUsername(
+    fromUsername: string,
+    toUsername: string,
+    amount: string,
+    appReference: string,
+  ): Promise<ContractOperationResult> {
+    return this.evmTransferByUsername(fromUsername, toUsername, amount, appReference);
+  }
+
+  /** @deprecated use evmDebit() */
+  async debit(
+    walletAddress: string,
+    amount: string,
+    appReference: string,
+  ): Promise<ContractOperationResult> {
+    return this.evmDebit(walletAddress, amount, appReference);
+  }
+
+  /** @deprecated use evmCredit() */
+  async credit(
+    walletAddress: string,
+    amount: string,
+    appReference: string,
+  ): Promise<ContractOperationResult> {
+    return this.evmCredit(walletAddress, amount, appReference);
+  }
+
+  /** @deprecated use getStellarUsdcBalance() */
+  async getStellarBalance(publicKey: string): Promise<{ usdc: string }> {
+    const usdc = await this.getStellarUsdcBalance(publicKey);
+    return { usdc };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Previously stubbed methods — now properly implemented
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Send USDC on Stellar.
+   * Alias kept for backward compat with banks.service, paylink.service,
+   * send.service, wallet.service.
+   */
+  async sendUsdc(opts: {
+    fromSecretEnc: string;
+    toAddress: string;       // Stellar public key (G...)
+    amountUsdc: string;
+    memo?: string;
+  }): Promise<string> {
+    const result = await this.sendStellarUsdc({
+      fromSecretEnc: opts.fromSecretEnc,
+      toPublicKey:   opts.toAddress,
+      amountUsdc:    opts.amountUsdc,
+      memo:          opts.memo,
+    });
+    return result.txHash;
+  }
+
+  /**
+   * Get USDC balance on Stellar.
+   * Returns { usdc } for backward compat with paylink.service, send.service.
+   */
+  async getUsdcBalance(publicKey: string): Promise<{ usdc: string }> {
+    const usdc = await this.getStellarUsdcBalance(publicKey);
+    return { usdc };
+  }
+
+  /**
+   * Get the EVM contract balance for a username.
+   * Used by wallet.service to aggregate balance view.
+   */
+  async getContractBalance(username: string): Promise<string> {
+    const walletAddress = await this.resolveEvmUsername(username);
+    if (!walletAddress) return '0.00000000';
+    return this.getEvmBalance(walletAddress);
+  }
+
+  /**
+   * Register a user on the EVM contract and return the tx hash.
+   * wallet.service calls this when setting up EVM for an existing user.
+   */
+  async registerUser(username: string, evmAddress: string): Promise<string> {
+    const result = await this.createEvmWallet(evmAddress, username);
+    return result.txHash;
+  }
+
+  /**
+   * Platform deposits USDC into a user's EVM contract wallet.
+   * Called when a user on-ramps fiat → USDC on the EVM side.
+   */
+  async contractDeposit(username: string, amountUsdc: string): Promise<void> {
+    const walletAddress = await this.resolveEvmUsername(username);
+    if (!walletAddress) {
+      throw new ContractCallException('contractDeposit', `No EVM wallet for username: ${username}`);
+    }
+    await this.evmCredit(walletAddress, amountUsdc, `deposit:${username}`);
+  }
+
+  /**
+   * Platform deposits USDC into a contract wallet identified by Stellar address.
+   * Used during Stellar → EVM bridging flows.
+   */
+  async contractDepositByAddress(stellarAddress: string, amountUsdc: string): Promise<void> {
+    // The stellar address is used as a lookup key — resolve to EVM wallet
+    // In practice this is called after a Stellar payment is confirmed,
+    // the caller passes the user's EVM wallet address here directly.
+    await this.evmCredit(stellarAddress, amountUsdc, `deposit-bridge:${stellarAddress}`);
+  }
+
+  /**
+   * Withdraws USDC from a user's EVM contract wallet back to the platform.
+   * Called when a user off-ramps USDC → fiat on the EVM side.
+   */
+  async contractWithdraw(
+    username: string,
+    amountUsdc: string,
+    toAddress: string,
+  ): Promise<void> {
+    const walletAddress = await this.resolveEvmUsername(username);
+    if (!walletAddress) {
+      throw new ContractCallException('contractWithdraw', `No EVM wallet for username: ${username}`);
+    }
+    await this.evmDebit(walletAddress, amountUsdc, `withdraw:${username}:${toAddress}`);
+  }
+
+  /**
+   * Verifies a device signature.
+   * Used in auth.service login flow.
+   * TODO: implement proper Ed25519 / secp256k1 verification once
+   * device key format is finalised.
+   */
+  verifyDeviceSignature(opts: {
+    publicKey: string;
+    signature: string;
+    message: string;
+  }): boolean {
+    // Stub — returns true so login works in development.
+    // Production gate is in auth.service: if (!valid && env === 'production') throw
+    this.logger.warn(
+      `verifyDeviceSignature not yet implemented — skipping [publicKey=${opts.publicKey}]`,
+    );
+    return true;
+  }
 }

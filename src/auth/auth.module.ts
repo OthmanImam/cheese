@@ -28,7 +28,6 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
                               Device, 
                               WaitlistEntry, 
                               ReferralEvent,  
-                              BullModule.registerQueue({ name: 'wallet-creation' })]),
     PassportModule,
     JwtModule.register({}), // secrets supplied per sign() call
     OtpModule,
@@ -36,7 +35,9 @@ import { WalletCreationProcessor } from './processors/wallet-creation.processor'
     WalletModule,
     EmailModule,
     WaitlistModule,
-  ],
+    ],
+  BullModule.registerQueue({ name: 'wallet-creation' })]),
+
   controllers: [AuthController],
   providers: [AuthService, JwtAccessStrategy, JwtRefreshStrategy, WalletCreationProcessor],
   exports: [AuthService, TypeOrmModule, WaitlistModule],
