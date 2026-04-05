@@ -10,7 +10,6 @@ import { ContractCallException } from '../exceptions/blockchain.exceptions';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EvmWalletCreationResult {
-  /** Contract-managed wallet address emitted by WalletCreated event */
   walletAddress: string;
   txHash: string;
   blockNumber: number;
@@ -18,9 +17,7 @@ export interface EvmWalletCreationResult {
 }
 
 export interface StellarWalletCreationResult {
-  /** Stellar public key (G...) */
   publicKey: string;
-  /** AES-256-GCM encrypted secret key — stored in DB, never exposed */
   secretKeyEnc: string;
 }
 
@@ -28,14 +25,11 @@ export interface ContractOperationResult {
   txHash: string;
   blockNumber: number;
   gasUsed: string;
-  /** Human-readable balance after operation (8 dp) */
   balanceAfter: string;
 }
 
 export interface StellarTransferResult {
-  /** Stellar transaction hash */
   txHash: string;
-  /** Sender balance after transfer */
   balanceAfter: string;
 }
 
@@ -44,54 +38,33 @@ export interface StellarTransferResult {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STELLAR_USDC_ISSUERS = {
-  mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN', // Circle
-  testnet: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5', // Circle testnet
+  mainnet: 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
+  testnet: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * BlockchainService
- *
- * Manages ALL on-chain interactions for Cheese Pay.
- * Two chains are supported simultaneously:
- *
- *   ── EVM (Celo / any EVM chain) ──────────────────────────────────────────
- *   Uses ethers.js v6 + the Cheese Wallet smart contract.
- *   On user registration: calls createWallet(evmAddress, username) on the
- *   contract. The contract manages per-user custodial wallets on-chain.
- *   Debit / Credit / TransferByUsername all go through the same contract.
- *
- *   ── Stellar ─────────────────────────────────────────────────────────────
- *   Uses @stellar/stellar-sdk v14.
- *   On user registration: generates a fresh Keypair, funds the account
- *   (XLM from the platform reserve account), then establishes a USDC
- *   trustline. The secret key is AES-256-GCM encrypted before storing.
- *   USDC transfers go directly on the Stellar network via PathPayment
- *   or regular Payment operations.
- *
- * This service has NO business logic — it does not write to Postgres,
- * does not validate DTOs, and does not throw application-level exceptions
- * other than ContractCallException. All orchestration lives in WalletService.
- */
 @Injectable()
 export class BlockchainService implements OnModuleInit {
   private readonly logger = new Logger(BlockchainService.name);
 
   // ── EVM ────────────────────────────────────────────────────────────────
-  private evmProvider:  ethers.JsonRpcProvider;
-  private evmSigner:    ethers.Wallet;
-  private evmContract:  ethers.Contract;
+  private evmProvider:   ethers.JsonRpcProvider;
+  private evmSigner:     ethers.Wallet;
+  private evmContract:   ethers.Contract;
   private tokenDecimals: number;
+  private evmReady = false;
 
   // ── Stellar ────────────────────────────────────────────────────────────
-  private stellarServer:   StellarSdk.Horizon.Server;
-  private stellarNetwork:  string;        // passphrase
-  private stellarPlatformKeypair: StellarSdk.Keypair;
-  private stellarUsdcIssuer: string;
+  private stellarServer:           StellarSdk.Horizon.Server;
+  private stellarNetwork:          string;
+  private stellarPlatformKeypair:  StellarSdk.Keypair;
+  private stellarUsdcIssuer:       string;
+  private stellarReady = false;
 
   // ── Encryption ─────────────────────────────────────────────────────────
-  private encryptionKey: Buffer; // 32 bytes for AES-256
+  private encryptionKey: Buffer;
+  private encryptionReady = false;
 
   // ── Contract ABI ───────────────────────────────────────────────────────
   private readonly CONTRACT_ABI = [
@@ -111,25 +84,74 @@ export class BlockchainService implements OnModuleInit {
   constructor(private readonly config: ConfigService) {}
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Initialisation
+  // Initialisation — each chain boots independently, app never crashes on
+  // missing / placeholder config
   // ─────────────────────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
-    await this.initEvm();
-    await this.initStellar();
-    this.initEncryption();
+    const rpcUrl      = this.config.get<string>('BLOCKCHAIN_RPC_URL');
+    const privateKey  = this.config.get<string>('PLATFORM_WALLET_PRIVATE_KEY');
+    const contractAddr = this.config.get<string>('WALLET_CONTRACT_ADDRESS');
+
+    const stellarSecret = this.config.get<string>('STELLAR_PLATFORM_SECRET_KEY');
+    const horizonUrl    = this.config.get<string>('STELLAR_HORIZON_URL');
+
+    const encKey = this.config.get<string>('SECRET_ENCRYPTION_KEY');
+
+    // EVM — only init if all three vars are present and non-placeholder
+    if (
+      rpcUrl && privateKey && contractAddr &&
+      !privateKey.includes('placeholder') &&
+      !contractAddr.includes('placeholder')
+    ) {
+      try {
+        await this.initEvm(rpcUrl, privateKey, contractAddr);
+        this.evmReady = true;
+      } catch (err) {
+        this.logger.error(`EVM init failed: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn('EVM not configured — blockchain EVM features disabled');
+    }
+
+    // Stellar — only init if secret looks like a real Stellar secret key (starts with S)
+    if (
+      horizonUrl && stellarSecret &&
+      stellarSecret.startsWith('S') &&
+      !stellarSecret.includes('placeholder')
+    ) {
+      try {
+        await this.initStellar(horizonUrl, stellarSecret);
+        this.stellarReady = true;
+      } catch (err) {
+        this.logger.error(`Stellar init failed: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn('Stellar not configured — Stellar features disabled');
+    }
+
+    // Encryption — only init if key is exactly 64 hex chars
+    if (encKey && encKey.length === 64 && !encKey.includes('placeholder')) {
+      try {
+        this.initEncryption(encKey);
+        this.encryptionReady = true;
+      } catch (err) {
+        this.logger.error(`Encryption init failed: ${(err as Error).message}`);
+      }
+    } else {
+      this.logger.warn('SECRET_ENCRYPTION_KEY not configured — encryption disabled');
+    }
   }
 
-  private async initEvm(): Promise<void> {
-    const rpcUrl          = this.config.getOrThrow<string>('BLOCKCHAIN_RPC_URL');
-    const privateKey      = this.config.getOrThrow<string>('PLATFORM_WALLET_PRIVATE_KEY');
-    const contractAddress = this.config.getOrThrow<string>('WALLET_CONTRACT_ADDRESS');
-
+  private async initEvm(
+    rpcUrl: string,
+    privateKey: string,
+    contractAddress: string,
+  ): Promise<void> {
     this.evmProvider = new ethers.JsonRpcProvider(rpcUrl);
     this.evmSigner   = new ethers.Wallet(privateKey, this.evmProvider);
     this.evmContract = new ethers.Contract(contractAddress, this.CONTRACT_ABI, this.evmSigner);
 
-    // Read decimals from the contract — no hardcoding
     this.tokenDecimals = Number(await this.evmContract.tokenDecimals());
 
     const network = await this.evmProvider.getNetwork();
@@ -140,25 +162,15 @@ export class BlockchainService implements OnModuleInit {
     );
   }
 
-  private async initStellar(): Promise<void> {
-    const horizonUrl   = this.config.getOrThrow<string>('STELLAR_HORIZON_URL');
-    const secretKey    = this.config.getOrThrow<string>('STELLAR_PLATFORM_SECRET_KEY');
-    const isMainnet    = this.config.get<string>('NODE_ENV') === 'production';
+  private async initStellar(horizonUrl: string, secretKey: string): Promise<void> {
+    const isMainnet = this.config.get<string>('NODE_ENV') === 'production';
 
-    this.stellarServer  = new StellarSdk.Horizon.Server(horizonUrl);
-    this.stellarNetwork = isMainnet
-      ? StellarSdk.Networks.PUBLIC
-      : StellarSdk.Networks.TESTNET;
-
+    this.stellarServer          = new StellarSdk.Horizon.Server(horizonUrl);
+    this.stellarNetwork         = isMainnet ? StellarSdk.Networks.PUBLIC : StellarSdk.Networks.TESTNET;
     this.stellarPlatformKeypair = StellarSdk.Keypair.fromSecret(secretKey);
-    this.stellarUsdcIssuer      = isMainnet
-      ? STELLAR_USDC_ISSUERS.mainnet
-      : STELLAR_USDC_ISSUERS.testnet;
+    this.stellarUsdcIssuer      = isMainnet ? STELLAR_USDC_ISSUERS.mainnet : STELLAR_USDC_ISSUERS.testnet;
 
-    // Verify the platform account exists and is funded
-    const account = await this.stellarServer.loadAccount(
-      this.stellarPlatformKeypair.publicKey(),
-    );
+    const account   = await this.stellarServer.loadAccount(this.stellarPlatformKeypair.publicKey());
     const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
     this.logger.log(
       `Stellar ready [network=${isMainnet ? 'mainnet' : 'testnet'}]` +
@@ -167,28 +179,41 @@ export class BlockchainService implements OnModuleInit {
     );
   }
 
-  private initEncryption(): void {
-    const keyHex = this.config.getOrThrow<string>('SECRET_ENCRYPTION_KEY');
-    if (keyHex.length !== 64) {
-      throw new Error('SECRET_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
-    }
+  private initEncryption(keyHex: string): void {
     this.encryptionKey = Buffer.from(keyHex, 'hex');
+    this.logger.log('Encryption ready');
+  }
+
+  // ── Guards ────────────────────────────────────────────────────────────────
+
+  private requireEvm(operation: string): void {
+    if (!this.evmReady) {
+      throw new ContractCallException(operation, 'EVM not initialised — check BLOCKCHAIN_RPC_URL, PLATFORM_WALLET_PRIVATE_KEY, WALLET_CONTRACT_ADDRESS');
+    }
+  }
+
+  private requireStellar(operation: string): void {
+    if (!this.stellarReady) {
+      throw new ContractCallException(operation, 'Stellar not initialised — check STELLAR_HORIZON_URL, STELLAR_PLATFORM_SECRET_KEY');
+    }
+  }
+
+  private requireEncryption(operation: string): void {
+    if (!this.encryptionReady) {
+      throw new ContractCallException(operation, 'Encryption not initialised — check SECRET_ENCRYPTION_KEY');
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // EVM — Wallet creation
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Calls createWallet on the smart contract.
-   * The contract creates a managed sub-wallet for the user and emits WalletCreated.
-   */
   async createEvmWallet(evmAddress: string, username: string): Promise<EvmWalletCreationResult> {
+    this.requireEvm('createEvmWallet');
     this.logger.log(`createEvmWallet [username=${username}] [evmAddress=${evmAddress}]`);
     try {
       const tx      = await this.evmContract.createWallet(evmAddress, username.toLowerCase());
       const receipt = await tx.wait(1) as ethers.TransactionReceipt;
-
       const walletAddress = this.parseEventArg(receipt, 'WalletCreated', 'wallet');
 
       this.logger.log(
@@ -212,6 +237,7 @@ export class BlockchainService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   async getEvmBalance(walletAddress: string): Promise<string> {
+    this.requireEvm('getEvmBalance');
     try {
       const raw: bigint = await this.evmContract.getBalance(walletAddress);
       return this.toHuman(raw);
@@ -224,51 +250,31 @@ export class BlockchainService implements OnModuleInit {
   // EVM — Debit / Credit / Transfer
   // ─────────────────────────────────────────────────────────────────────────
 
-  async evmDebit(
-    walletAddress: string,
-    amount: string,
-    appReference: string,
-  ): Promise<ContractOperationResult> {
+  async evmDebit(walletAddress: string, amount: string, appReference: string): Promise<ContractOperationResult> {
+    this.requireEvm('evmDebit');
     const units = this.toUnits(amount);
     this.logger.log(`evmDebit [wallet=${walletAddress}] [amount=${amount}] [ref=${appReference}]`);
     try {
       const tx      = await this.evmContract.debit(walletAddress, units, appReference);
       const receipt = await tx.wait(1) as ethers.TransactionReceipt;
       const balanceAfter = await this.getEvmBalance(walletAddress);
-
       this.logger.log(`evmDebit confirmed [txHash=${receipt.hash}] [balanceAfter=${balanceAfter}]`);
-
-      return {
-        txHash:      receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed:     receipt.gasUsed.toString(),
-        balanceAfter,
-      };
+      return { txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString(), balanceAfter };
     } catch (err) {
       throw this.wrapError('evmDebit', err);
     }
   }
 
-  async evmCredit(
-    walletAddress: string,
-    amount: string,
-    appReference: string,
-  ): Promise<ContractOperationResult> {
+  async evmCredit(walletAddress: string, amount: string, appReference: string): Promise<ContractOperationResult> {
+    this.requireEvm('evmCredit');
     const units = this.toUnits(amount);
     this.logger.log(`evmCredit [wallet=${walletAddress}] [amount=${amount}] [ref=${appReference}]`);
     try {
       const tx      = await this.evmContract.credit(walletAddress, units, appReference);
       const receipt = await tx.wait(1) as ethers.TransactionReceipt;
       const balanceAfter = await this.getEvmBalance(walletAddress);
-
       this.logger.log(`evmCredit confirmed [txHash=${receipt.hash}] [balanceAfter=${balanceAfter}]`);
-
-      return {
-        txHash:      receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed:     receipt.gasUsed.toString(),
-        balanceAfter,
-      };
+      return { txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString(), balanceAfter };
     } catch (err) {
       throw this.wrapError('evmCredit', err);
     }
@@ -280,42 +286,23 @@ export class BlockchainService implements OnModuleInit {
     amount: string,
     appReference: string,
   ): Promise<ContractOperationResult> {
+    this.requireEvm('evmTransferByUsername');
     const units = this.toUnits(amount);
-    this.logger.log(
-      `evmTransferByUsername [@${fromUsername} → @${toUsername}]` +
-      ` [amount=${amount}] [ref=${appReference}]`,
-    );
+    this.logger.log(`evmTransferByUsername [@${fromUsername} → @${toUsername}] [amount=${amount}]`);
     try {
-      const tx = await this.evmContract.transferByUsername(
-        fromUsername.toLowerCase(),
-        toUsername.toLowerCase(),
-        units,
-        appReference,
-      );
+      const tx      = await this.evmContract.transferByUsername(fromUsername.toLowerCase(), toUsername.toLowerCase(), units, appReference);
       const receipt = await tx.wait(1) as ethers.TransactionReceipt;
-
       const senderWallet = await this.resolveEvmUsername(fromUsername);
-      const balanceAfter = senderWallet
-        ? await this.getEvmBalance(senderWallet)
-        : '0.00000000';
-
-      this.logger.log(
-        `evmTransferByUsername confirmed [txHash=${receipt.hash}]` +
-        ` [@${fromUsername} balanceAfter=${balanceAfter}]`,
-      );
-
-      return {
-        txHash:      receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed:     receipt.gasUsed.toString(),
-        balanceAfter,
-      };
+      const balanceAfter = senderWallet ? await this.getEvmBalance(senderWallet) : '0.00000000';
+      this.logger.log(`evmTransferByUsername confirmed [txHash=${receipt.hash}] [@${fromUsername} balanceAfter=${balanceAfter}]`);
+      return { txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: receipt.gasUsed.toString(), balanceAfter };
     } catch (err) {
       throw this.wrapError('evmTransferByUsername', err);
     }
   }
 
   async resolveEvmUsername(username: string): Promise<string | null> {
+    this.requireEvm('resolveEvmUsername');
     try {
       const address: string = await this.evmContract.getWalletByUsername(username.toLowerCase());
       const zero = '0x0000000000000000000000000000000000000000';
@@ -329,83 +316,45 @@ export class BlockchainService implements OnModuleInit {
   // Stellar — Wallet creation
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Creates a custodial Stellar wallet for a new user.
-   *
-   * Steps:
-   *   1. Generate a fresh Keypair
-   *   2. Fund the new account with the minimum XLM reserve from the
-   *      platform account (1 XLM base + 0.5 XLM per trustline entry)
-   *   3. Establish the USDC trustline so the account can hold USDC
-   *   4. Encrypt the secret key and return it for DB storage
-   *
-   * The caller (WalletService) stores secretKeyEnc in the users table.
-   * The raw secret key NEVER leaves this method.
-   */
   async createStellarWallet(): Promise<StellarWalletCreationResult> {
-    const keypair = StellarSdk.Keypair.random();
-    const publicKey = keypair.publicKey();
+    this.requireStellar('createStellarWallet');
+    this.requireEncryption('createStellarWallet');
 
+    const keypair   = StellarSdk.Keypair.random();
+    const publicKey = keypair.publicKey();
     this.logger.log(`createStellarWallet [publicKey=${publicKey}]`);
 
     try {
-      // Step 1: Fund the new account (platform sends starting XLM)
       await this.fundStellarAccount(publicKey);
-
-      // Step 2: Establish USDC trustline using the new account's keypair
       await this.ensureTrustline(keypair);
-
-      // Step 3: Encrypt the secret key for DB storage
       const secretKeyEnc = this.encryptSecret(keypair.secret());
-
       this.logger.log(`createStellarWallet complete [publicKey=${publicKey}]`);
-
       return { publicKey, secretKeyEnc };
     } catch (err) {
       throw this.wrapError('createStellarWallet', err);
     }
   }
 
-  /**
-   * Funds a new Stellar account with enough XLM for:
-   *   - Base reserve: 1 XLM
-   *   - One trustline entry: 0.5 XLM
-   *   - Transaction fees buffer: 0.1 XLM
-   *   Total: 1.6 XLM sent from the platform account
-   */
   private async fundStellarAccount(newPublicKey: string): Promise<void> {
     this.logger.log(`fundStellarAccount [target=${newPublicKey}]`);
-
-    const platformAccount = await this.stellarServer.loadAccount(
-      this.stellarPlatformKeypair.publicKey(),
-    );
+    const platformAccount = await this.stellarServer.loadAccount(this.stellarPlatformKeypair.publicKey());
 
     const tx = new StellarSdk.TransactionBuilder(platformAccount, {
-      fee:          StellarSdk.BASE_FEE,
+      fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.stellarNetwork,
     })
-      .addOperation(
-        StellarSdk.Operation.createAccount({
-          destination:     newPublicKey,
-          startingBalance: '1.6', // XLM
-        }),
-      )
+      .addOperation(StellarSdk.Operation.createAccount({ destination: newPublicKey, startingBalance: '1.6' }))
       .setTimeout(30)
       .build();
 
     tx.sign(this.stellarPlatformKeypair);
-
     const result = await this.stellarServer.submitTransaction(tx);
     this.logger.log(`fundStellarAccount submitted [hash=${result.hash}]`);
   }
 
-  /**
-   * Establishes a USDC trustline on the given Stellar account.
-   * Must be called AFTER the account has been funded with XLM.
-   * The account's own keypair signs this transaction.
-   */
   async ensureTrustline(keypairOrEnc: StellarSdk.Keypair | string): Promise<void> {
-    // Accept either a raw Keypair (during creation) or an encrypted secret string
+    this.requireStellar('ensureTrustline');
+
     const keypair = typeof keypairOrEnc === 'string'
       ? StellarSdk.Keypair.fromSecret(this.decryptSecret(keypairOrEnc))
       : keypairOrEnc;
@@ -414,12 +363,10 @@ export class BlockchainService implements OnModuleInit {
     this.logger.log(`ensureTrustline [publicKey=${publicKey}]`);
 
     const account = await this.stellarServer.loadAccount(publicKey);
-
-    // Check if trustline already exists
     const hasUsdcTrustline = account.balances.some(
       (b) =>
         b.asset_type === 'credit_alphanum4' &&
-        (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_code === 'USDC' &&
+        (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_code   === 'USDC' &&
         (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_issuer === this.stellarUsdcIssuer,
     );
 
@@ -429,22 +376,15 @@ export class BlockchainService implements OnModuleInit {
     }
 
     const usdcAsset = new StellarSdk.Asset('USDC', this.stellarUsdcIssuer);
-
     const tx = new StellarSdk.TransactionBuilder(account, {
-      fee:          StellarSdk.BASE_FEE,
+      fee: StellarSdk.BASE_FEE,
       networkPassphrase: this.stellarNetwork,
     })
-      .addOperation(
-        StellarSdk.Operation.changeTrust({
-          asset: usdcAsset,
-          // No limit = maximum allowed by the protocol
-        }),
-      )
+      .addOperation(StellarSdk.Operation.changeTrust({ asset: usdcAsset }))
       .setTimeout(30)
       .build();
 
     tx.sign(keypair);
-
     const result = await this.stellarServer.submitTransaction(tx);
     this.logger.log(`ensureTrustline submitted [hash=${result.hash}] [publicKey=${publicKey}]`);
   }
@@ -454,15 +394,15 @@ export class BlockchainService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   async getStellarUsdcBalance(publicKey: string): Promise<string> {
+    this.requireStellar('getStellarUsdcBalance');
     try {
-      const account = await this.stellarServer.loadAccount(publicKey);
+      const account     = await this.stellarServer.loadAccount(publicKey);
       const usdcBalance = account.balances.find(
         (b) =>
           b.asset_type === 'credit_alphanum4' &&
-          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_code === 'USDC' &&
+          (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_code   === 'USDC' &&
           (b as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'>).asset_issuer === this.stellarUsdcIssuer,
       ) as StellarSdk.Horizon.HorizonApi.BalanceLine<'credit_alphanum4'> | undefined;
-
       return usdcBalance?.balance ?? '0.0000000';
     } catch (err) {
       throw this.wrapError('getStellarUsdcBalance', err);
@@ -470,9 +410,10 @@ export class BlockchainService implements OnModuleInit {
   }
 
   async getStellarXlmBalance(publicKey: string): Promise<string> {
+    this.requireStellar('getStellarXlmBalance');
     try {
       const account = await this.stellarServer.loadAccount(publicKey);
-      const xlm = account.balances.find((b) => b.asset_type === 'native');
+      const xlm     = account.balances.find((b) => b.asset_type === 'native');
       return xlm?.balance ?? '0.0000000';
     } catch (err) {
       throw this.wrapError('getStellarXlmBalance', err);
@@ -483,68 +424,39 @@ export class BlockchainService implements OnModuleInit {
   // Stellar — USDC transfer
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Sends USDC from one Stellar account to another.
-   *
-   * @param fromSecretEnc  AES-256-GCM encrypted secret key of the sender
-   * @param toPublicKey    Recipient's Stellar public key (G...)
-   * @param amountUsdc     Human-readable USDC amount e.g. "25.00"
-   * @param memo           Optional text memo (max 28 bytes)
-   */
   async sendStellarUsdc(opts: {
     fromSecretEnc: string;
     toPublicKey: string;
     amountUsdc: string;
     memo?: string;
   }): Promise<StellarTransferResult> {
+    this.requireStellar('sendStellarUsdc');
+    this.requireEncryption('sendStellarUsdc');
+
     const { fromSecretEnc, toPublicKey, amountUsdc, memo } = opts;
-
-    const senderKeypair = StellarSdk.Keypair.fromSecret(this.decryptSecret(fromSecretEnc));
+    const senderKeypair   = StellarSdk.Keypair.fromSecret(this.decryptSecret(fromSecretEnc));
     const senderPublicKey = senderKeypair.publicKey();
-
-    this.logger.log(
-      `sendStellarUsdc [from=${senderPublicKey}] [to=${toPublicKey}] [amount=${amountUsdc}]`,
-    );
+    this.logger.log(`sendStellarUsdc [from=${senderPublicKey}] [to=${toPublicKey}] [amount=${amountUsdc}]`);
 
     try {
       const senderAccount = await this.stellarServer.loadAccount(senderPublicKey);
       const usdcAsset     = new StellarSdk.Asset('USDC', this.stellarUsdcIssuer);
-
-      const txBuilder = new StellarSdk.TransactionBuilder(senderAccount, {
-        fee:               StellarSdk.BASE_FEE,
+      const txBuilder     = new StellarSdk.TransactionBuilder(senderAccount, {
+        fee: StellarSdk.BASE_FEE,
         networkPassphrase: this.stellarNetwork,
-      }).addOperation(
-        StellarSdk.Operation.payment({
-          destination: toPublicKey,
-          asset:       usdcAsset,
-          amount:      amountUsdc,
-        }),
-      );
+      }).addOperation(StellarSdk.Operation.payment({ destination: toPublicKey, asset: usdcAsset, amount: amountUsdc }));
 
-      if (memo) {
-        txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
-      }
+      if (memo) txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
 
       const tx = txBuilder.setTimeout(30).build();
       tx.sign(senderKeypair);
 
-      const result = await this.stellarServer.submitTransaction(tx);
+      const result      = await this.stellarServer.submitTransaction(tx);
       const balanceAfter = await this.getStellarUsdcBalance(senderPublicKey);
-
-      this.logger.log(
-        `sendStellarUsdc confirmed [hash=${result.hash}]` +
-        ` [from=${senderPublicKey}] [balanceAfter=${balanceAfter}]`,
-      );
-
+      this.logger.log(`sendStellarUsdc confirmed [hash=${result.hash}] [balanceAfter=${balanceAfter}]`);
       return { txHash: result.hash, balanceAfter };
     } catch (err) {
-      // Stellar wraps errors in a response envelope — unwrap for useful messages
-      if (
-        err &&
-        typeof err === 'object' &&
-        'response' in err &&
-        (err as any).response?.data
-      ) {
+      if (err && typeof err === 'object' && 'response' in err && (err as any).response?.data) {
         const ops = (err as any).response.data?.extras?.result_codes?.operations;
         const msg = ops ? `Stellar op error: ${ops.join(', ')}` : String(err);
         throw new ContractCallException('sendStellarUsdc', msg);
@@ -554,14 +466,12 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Stellar — Platform-level operations (custodial deposit / withdraw)
+  // Stellar — Platform deposit / withdraw
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Platform deposits USDC into a user's Stellar wallet.
-   * Called when a user on-ramps fiat → USDC.
-   */
   async platformDepositUsdc(toPublicKey: string, amountUsdc: string): Promise<string> {
+    this.requireStellar('platformDepositUsdc');
+    this.requireEncryption('platformDepositUsdc');
     this.logger.log(`platformDepositUsdc [to=${toPublicKey}] [amount=${amountUsdc}]`);
     const result = await this.sendStellarUsdc({
       fromSecretEnc: this.encryptSecret(this.stellarPlatformKeypair.secret()),
@@ -572,18 +482,10 @@ export class BlockchainService implements OnModuleInit {
     return result.txHash;
   }
 
-  /**
-   * Withdraws USDC from a user's Stellar wallet back to the platform.
-   * Called when a user off-ramps USDC → fiat.
-   */
-  async platformWithdrawUsdc(
-    fromSecretEnc: string,
-    amountUsdc: string,
-    reference: string,
-  ): Promise<string> {
+  async platformWithdrawUsdc(fromSecretEnc: string, amountUsdc: string, reference: string): Promise<string> {
+    this.requireStellar('platformWithdrawUsdc');
     const keypair = StellarSdk.Keypair.fromSecret(this.decryptSecret(fromSecretEnc));
     this.logger.log(`platformWithdrawUsdc [from=${keypair.publicKey()}] [amount=${amountUsdc}]`);
-
     const result = await this.sendStellarUsdc({
       fromSecretEnc,
       toPublicKey: this.stellarPlatformKeypair.publicKey(),
@@ -597,26 +499,19 @@ export class BlockchainService implements OnModuleInit {
   // Encryption — AES-256-GCM
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Encrypts a Stellar secret key using AES-256-GCM.
-   * Output format: <iv_hex>:<authTag_hex>:<ciphertext_hex>
-   */
   encryptSecret(secret: string): string {
-    const iv         = crypto.randomBytes(12); // 96-bit IV for GCM
-    const cipher     = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
-    const encrypted  = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
-    const authTag    = cipher.getAuthTag();
+    this.requireEncryption('encryptSecret');
+    const iv        = crypto.randomBytes(12);
+    const cipher    = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
+    const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
+    const authTag   = cipher.getAuthTag();
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
-  /**
-   * Decrypts a Stellar secret key encrypted by encryptSecret.
-   */
   decryptSecret(encryptedSecret: string): string {
+    this.requireEncryption('decryptSecret');
     const [ivHex, authTagHex, ciphertextHex] = encryptedSecret.split(':');
-    if (!ivHex || !authTagHex || !ciphertextHex) {
-      throw new Error('Invalid encrypted secret format');
-    }
+    if (!ivHex || !authTagHex || !ciphertextHex) throw new Error('Invalid encrypted secret format');
     const iv         = Buffer.from(ivHex, 'hex');
     const authTag    = Buffer.from(authTagHex, 'hex');
     const ciphertext = Buffer.from(ciphertextHex, 'hex');
@@ -629,21 +524,20 @@ export class BlockchainService implements OnModuleInit {
   // EVM helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  getEvmSignerAddress(): string  { return this.evmSigner.address; }
-  getEvmContractAddress(): string { return this.evmContract.target as string; }
-  getTokenDecimals(): number     { return this.tokenDecimals; }
+  getEvmSignerAddress(): string   { this.requireEvm('getEvmSignerAddress');   return this.evmSigner.address; }
+  getEvmContractAddress(): string { this.requireEvm('getEvmContractAddress'); return this.evmContract.target as string; }
+  getTokenDecimals(): number      { this.requireEvm('getTokenDecimals');      return this.tokenDecimals; }
 
   async getEvmChainId(): Promise<number> {
+    this.requireEvm('getEvmChainId');
     const network = await this.evmProvider.getNetwork();
     return Number(network.chainId);
   }
 
-  /** Convert human-readable amount string to on-chain bigint units */
   toUnits(amount: string): bigint {
     return ethers.parseUnits(amount, this.tokenDecimals);
   }
 
-  /** Convert on-chain bigint units to human-readable string (8 dp) */
   toHuman(raw: bigint): string {
     return parseFloat(ethers.formatUnits(raw, this.tokenDecimals)).toFixed(8);
   }
@@ -653,10 +547,12 @@ export class BlockchainService implements OnModuleInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   getStellarPlatformPublicKey(): string {
+    this.requireStellar('getStellarPlatformPublicKey');
     return this.stellarPlatformKeypair.publicKey();
   }
 
   getStellarUsdcIssuer(): string {
+    this.requireStellar('getStellarUsdcIssuer');
     return this.stellarUsdcIssuer;
   }
 
@@ -664,19 +560,11 @@ export class BlockchainService implements OnModuleInit {
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  private parseEventArg(
-    receipt: ethers.TransactionReceipt,
-    eventName: string,
-    argName: string,
-  ): string {
+  private parseEventArg(receipt: ethers.TransactionReceipt, eventName: string, argName: string): string {
     const iface      = this.evmContract.interface;
     const eventTopic = iface.getEvent(eventName)!.topicHash;
     const log        = receipt.logs.find((l) => l.topics[0] === eventTopic);
-
-    if (!log) {
-      throw new ContractCallException(eventName, `${eventName} event not found in receipt`);
-    }
-
+    if (!log) throw new ContractCallException(eventName, `${eventName} event not found in receipt`);
     const parsed = iface.parseLog({ topics: [...log.topics], data: log.data })!;
     return parsed.args[argName] as string;
   }
@@ -688,23 +576,17 @@ export class BlockchainService implements OnModuleInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Backward-compatible aliases — old callers use these names
+  // Backward-compatible aliases
   // ─────────────────────────────────────────────────────────────────────────
 
   /** @deprecated use getEvmSignerAddress() */
-  getSignerAddress(): string {
-    return this.getEvmSignerAddress();
-  }
+  getSignerAddress(): string { return this.getEvmSignerAddress(); }
 
   /** @deprecated use getEvmContractAddress() */
-  getContractAddress(): string {
-    return this.getEvmContractAddress();
-  }
+  getContractAddress(): string { return this.getEvmContractAddress(); }
 
   /** @deprecated use getEvmChainId() */
-  async getChainId(): Promise<number> {
-    return this.getEvmChainId();
-  }
+  async getChainId(): Promise<number> { return this.getEvmChainId(); }
 
   /** @deprecated use createEvmWallet() */
   async createWallet(evmAddress: string, username: string): Promise<EvmWalletCreationResult> {
@@ -712,41 +594,24 @@ export class BlockchainService implements OnModuleInit {
   }
 
   /** @deprecated use getEvmBalance() */
-  async getBalance(walletAddress: string): Promise<string> {
-    return this.getEvmBalance(walletAddress);
-  }
+  async getBalance(walletAddress: string): Promise<string> { return this.getEvmBalance(walletAddress); }
 
   /** @deprecated use resolveEvmUsername() */
-  async resolveUsername(username: string): Promise<string | null> {
-    return this.resolveEvmUsername(username);
-  }
+  async resolveUsername(username: string): Promise<string | null> { return this.resolveEvmUsername(username); }
 
   /** @deprecated use evmTransferByUsername() */
-  async transferByUsername(
-    fromUsername: string,
-    toUsername: string,
-    amount: string,
-    appReference: string,
-  ): Promise<ContractOperationResult> {
-    return this.evmTransferByUsername(fromUsername, toUsername, amount, appReference);
+  async transferByUsername(from: string, to: string, amount: string, ref: string): Promise<ContractOperationResult> {
+    return this.evmTransferByUsername(from, to, amount, ref);
   }
 
   /** @deprecated use evmDebit() */
-  async debit(
-    walletAddress: string,
-    amount: string,
-    appReference: string,
-  ): Promise<ContractOperationResult> {
-    return this.evmDebit(walletAddress, amount, appReference);
+  async debit(wallet: string, amount: string, ref: string): Promise<ContractOperationResult> {
+    return this.evmDebit(wallet, amount, ref);
   }
 
   /** @deprecated use evmCredit() */
-  async credit(
-    walletAddress: string,
-    amount: string,
-    appReference: string,
-  ): Promise<ContractOperationResult> {
-    return this.evmCredit(walletAddress, amount, appReference);
+  async credit(wallet: string, amount: string, ref: string): Promise<ContractOperationResult> {
+    return this.evmCredit(wallet, amount, ref);
   }
 
   /** @deprecated use getStellarUsdcBalance() */
@@ -759,109 +624,45 @@ export class BlockchainService implements OnModuleInit {
   // Previously stubbed methods — now properly implemented
   // ─────────────────────────────────────────────────────────────────────────
 
-  /**
-   * Send USDC on Stellar.
-   * Alias kept for backward compat with banks.service, paylink.service,
-   * send.service, wallet.service.
-   */
-  async sendUsdc(opts: {
-    fromSecretEnc: string;
-    toAddress: string;       // Stellar public key (G...)
-    amountUsdc: string;
-    memo?: string;
-  }): Promise<string> {
-    const result = await this.sendStellarUsdc({
-      fromSecretEnc: opts.fromSecretEnc,
-      toPublicKey:   opts.toAddress,
-      amountUsdc:    opts.amountUsdc,
-      memo:          opts.memo,
-    });
+  async sendUsdc(opts: { fromSecretEnc: string; toAddress: string; amountUsdc: string; memo?: string }): Promise<string> {
+    const result = await this.sendStellarUsdc({ fromSecretEnc: opts.fromSecretEnc, toPublicKey: opts.toAddress, amountUsdc: opts.amountUsdc, memo: opts.memo });
     return result.txHash;
   }
 
-  /**
-   * Get USDC balance on Stellar.
-   * Returns { usdc } for backward compat with paylink.service, send.service.
-   */
   async getUsdcBalance(publicKey: string): Promise<{ usdc: string }> {
     const usdc = await this.getStellarUsdcBalance(publicKey);
     return { usdc };
   }
 
-  /**
-   * Get the EVM contract balance for a username.
-   * Used by wallet.service to aggregate balance view.
-   */
   async getContractBalance(username: string): Promise<string> {
     const walletAddress = await this.resolveEvmUsername(username);
     if (!walletAddress) return '0.00000000';
     return this.getEvmBalance(walletAddress);
   }
 
-  /**
-   * Register a user on the EVM contract and return the tx hash.
-   * wallet.service calls this when setting up EVM for an existing user.
-   */
   async registerUser(username: string, evmAddress: string): Promise<string> {
     const result = await this.createEvmWallet(evmAddress, username);
     return result.txHash;
   }
 
-  /**
-   * Platform deposits USDC into a user's EVM contract wallet.
-   * Called when a user on-ramps fiat → USDC on the EVM side.
-   */
   async contractDeposit(username: string, amountUsdc: string): Promise<void> {
     const walletAddress = await this.resolveEvmUsername(username);
-    if (!walletAddress) {
-      throw new ContractCallException('contractDeposit', `No EVM wallet for username: ${username}`);
-    }
+    if (!walletAddress) throw new ContractCallException('contractDeposit', `No EVM wallet for username: ${username}`);
     await this.evmCredit(walletAddress, amountUsdc, `deposit:${username}`);
   }
 
-  /**
-   * Platform deposits USDC into a contract wallet identified by Stellar address.
-   * Used during Stellar → EVM bridging flows.
-   */
   async contractDepositByAddress(stellarAddress: string, amountUsdc: string): Promise<void> {
-    // The stellar address is used as a lookup key — resolve to EVM wallet
-    // In practice this is called after a Stellar payment is confirmed,
-    // the caller passes the user's EVM wallet address here directly.
     await this.evmCredit(stellarAddress, amountUsdc, `deposit-bridge:${stellarAddress}`);
   }
 
-  /**
-   * Withdraws USDC from a user's EVM contract wallet back to the platform.
-   * Called when a user off-ramps USDC → fiat on the EVM side.
-   */
-  async contractWithdraw(
-    username: string,
-    amountUsdc: string,
-    toAddress: string,
-  ): Promise<void> {
+  async contractWithdraw(username: string, amountUsdc: string, toAddress: string): Promise<void> {
     const walletAddress = await this.resolveEvmUsername(username);
-    if (!walletAddress) {
-      throw new ContractCallException('contractWithdraw', `No EVM wallet for username: ${username}`);
-    }
+    if (!walletAddress) throw new ContractCallException('contractWithdraw', `No EVM wallet for username: ${username}`);
     await this.evmDebit(walletAddress, amountUsdc, `withdraw:${username}:${toAddress}`);
   }
 
-  /**
-   * Verifies a device signature.
-   * Used in auth.service login flow.
-   * TODO: implement proper Ed25519 / secp256k1 verification once
-   * device key format is finalised.
-   */
-  verifyDeviceSignature(opts: {
-    publicKey: string;
-    signature: string;
-    message: string;
-  }): boolean {
-    // Stub — returns true so login works in development.
-    // Production gate is in auth.service: if (!valid && env === 'production') throw
-    this.logger.warn(
-      `verifyDeviceSignature not yet implemented — skipping [publicKey=${opts.publicKey}]`,
-    );
+  verifyDeviceSignature(opts: { publicKey: string; signature: string; message: string }): boolean {
+    this.logger.warn(`verifyDeviceSignature not yet implemented — skipping [publicKey=${opts.publicKey}]`);
     return true;
   }
 }
