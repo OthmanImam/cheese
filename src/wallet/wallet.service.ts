@@ -10,34 +10,34 @@ import { TxStatus, TxType }                      from '../transactions/entities/
 import { v4 as uuidv4 }                          from 'uuid'
 
 export interface WalletBalance {
-  stellarUsdc:        string
-  stellarUsdcDisplay: string
-  evmUsdc:            string
-  evmUsdcDisplay:     string
-  totalUsdc:          string
-  totalUsdcDisplay:   string
-  ngnEquivalent:      string
-  ngnRate:            number
-  lastUpdated:        string
+  stellarUsdc: string;
+  stellarUsdcDisplay: string;
+  evmUsdc: string;
+  evmUsdcDisplay: string;
+  totalUsdc: string;
+  totalUsdcDisplay: string;
+  ngnEquivalent: string;
+  ngnRate: number;
+  lastUpdated: string;
 }
 
 export interface DepositAddress {
-  stellarAddress: string
-  evmAddress:     string | null
-  network:        string
-  asset:          'USDC'
-  memo:           null
+  stellarAddress: string;
+  evmAddress: string | null;
+  network: string;
+  asset: 'USDC';
+  memo: null;
 }
 
 @Injectable()
 export class WalletService {
-  private readonly logger = new Logger(WalletService.name)
+  private readonly logger = new Logger(WalletService.name);
 
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly blockchainService: BlockchainService,
-    private readonly ratesService:      RatesService,
-    private readonly txService:         TransactionsService,
+    private readonly ratesService: RatesService,
+    private readonly txService: TransactionsService,
   ) {}
 
   async getBalance(userId: string): Promise<WalletBalance> {
@@ -48,27 +48,29 @@ export class WalletService {
       user.stellarPublicKey
         ? this.blockchainService.getContractBalance(user.username)
         : Promise.resolve('0.0000000'),
-      this.blockchainService.getEvmBalance(user.evmAddress ?? null),
+      user.evmAddress
+        ? this.blockchainService.getEvmBalance(user.evmAddress)
+        : Promise.resolve('0.00000000'),
       this.ratesService.getCurrentRate(),
-    ])
+    ]);
 
-    const stellarAmount = parseFloat(stellarRaw)
-    const evmAmount     = parseFloat(evmRaw)
-    const totalAmount   = stellarAmount + evmAmount
-    const ngnRate       = parseFloat(rate.effectiveRate)
-    const ngnTotal      = totalAmount * ngnRate
+    const stellarAmount = parseFloat(stellarRaw);
+    const evmAmount = parseFloat(evmRaw);
+    const totalAmount = stellarAmount + evmAmount;
+    const ngnRate = parseFloat(rate.effectiveRate);
+    const ngnTotal = totalAmount * ngnRate;
 
     return {
-      stellarUsdc:        stellarRaw,
+      stellarUsdc: stellarRaw,
       stellarUsdcDisplay: `$${stellarAmount.toFixed(2)}`,
-      evmUsdc:            evmRaw,
-      evmUsdcDisplay:     `$${evmAmount.toFixed(2)}`,
-      totalUsdc:          totalAmount.toFixed(6),
-      totalUsdcDisplay:   `$${totalAmount.toFixed(2)}`,
-      ngnEquivalent:      `₦${ngnTotal.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      evmUsdc: evmRaw,
+      evmUsdcDisplay: `$${evmAmount.toFixed(2)}`,
+      totalUsdc: totalAmount.toFixed(6),
+      totalUsdcDisplay: `$${totalAmount.toFixed(2)}`,
+      ngnEquivalent: `₦${ngnTotal.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ngnRate,
-      lastUpdated:        new Date().toISOString(),
-    }
+      lastUpdated: new Date().toISOString(),
+    };
   }
 
   async getAddress(userId: string): Promise<DepositAddress> {
@@ -187,30 +189,36 @@ export class WalletService {
   }
 
   async withdraw(
-    userId:     string,
+    userId: string,
     amountUsdc: string,
-    toAddress:  string,
-    username:   string,
+    toAddress: string,
+    username: string,
   ): Promise<{ txHash: string; reference: string }> {
-    const reference = `CW-WDR-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`
-    const rate      = await this.ratesService.getCurrentRate()
-    const ngnEq     = (parseFloat(amountUsdc) * parseFloat(rate.effectiveRate)).toFixed(2)
+    const reference = `CW-WDR-${uuidv4().replace(/-/g, '').toUpperCase().slice(0, 16)}`;
+    const rate = await this.ratesService.getCurrentRate()
+    const ngnEq = (
+      parseFloat(amountUsdc) * parseFloat(rate.effectiveRate))
+      .toFixed(2)
 
     const tx = await this.txService.create({
       userId,
-      type:             TxType.WITHDRAWAL,
-      status:           TxStatus.PENDING,
+      type: TxType.WITHDRAWAL,
+      status: TxStatus.PENDING,
       amountUsdc,
-      amountNgn:        ngnEq,
-      feeUsdc:          '0.000000',
-      rateApplied:      rate.effectiveRate,
+      amountNgn: ngnEq,
+      feeUsdc: '0.000000',
+      rateApplied: rate.effectiveRate,
       recipientAddress: toAddress,
       reference,
-      description:      `Withdrawal to ${toAddress.slice(0, 6)}…${toAddress.slice(-4)}`,
-    })
+      description: `Withdrawal to ${toAddress.slice(0, 6)}…${toAddress.slice(-4)}`,
+    });
 
     try {
-      await this.blockchainService.contractWithdraw(username, amountUsdc, toAddress)
+      await this.blockchainService.contractWithdraw(
+        username,
+        amountUsdc,
+        toAddress,
+      );
 
       const user = await this.userRepo.findOne({ where: { id: userId } })
       if (!user?.stellarSecretEnc) throw new Error('Custodial key not found')
@@ -219,16 +227,22 @@ export class WalletService {
         fromSecretEnc: user.stellarSecretEnc,
         toAddress,
         amountUsdc,
-        memo:          reference,
-      })
+        memo: reference,
+      });
 
-      await this.txService.update(tx.id, { status: TxStatus.COMPLETED, txHash })
-      this.logger.log(`Withdrawal: @${username} -$${amountUsdc} → ${toAddress} | ${txHash}`)
-      return { txHash, reference }
-
+      await this.txService.update(tx.id, {
+        status: TxStatus.COMPLETED,
+        txHash,
+      });
+      this.logger.log(`Withdrawal: 
+        @${username} -$${amountUsdc} → ${toAddress} | ${txHash}`);
+      return { txHash, reference };
     } catch (err) {
-      await this.txService.update(tx.id, { status: TxStatus.FAILED, failureReason: err.message })
-      throw err
+      await this.txService.update(tx.id, {
+        status: TxStatus.FAILED,
+        failureReason: err.message
+      });
+      throw err;
     }
   }
 }
