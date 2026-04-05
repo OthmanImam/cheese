@@ -24,17 +24,16 @@ async function bootstrap() {
 
   // ── CORS ────────────────────────────────────────────────
 
-    app.enableCors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-App-Version',
-    'X-Platform',
-  ],
-}),
+  app.enableCors({
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'https://cheesepay.xyz',
+      'https://www.cheesepay.xyz',
+      'http://localhost:3000',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  });
 
   // ── Global validation ────────────────────────────────────
   app.useGlobalPipes(
