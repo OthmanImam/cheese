@@ -27,9 +27,19 @@ export enum Tier {
   BLACK  = 'black',
 }
 
+export enum WalletStatus {
+  PENDING = 'pending', // creation in progress / retry job running
+  ACTIVE  = 'active',  // wallet exists and is ready
+  FAILED  = 'failed',  // all retry attempts exhausted — needs manual fix
+}
+
 @Entity('users')
-@Index('idx_user_points', ['points'])
-@Index('idx_user_points_created', ['points', 'createdAt'])
+@Index('idx_user_email',             ['email'])
+@Index('idx_user_username',          ['username'])
+@Index('idx_user_points',            ['points'])
+@Index('idx_user_points_created',    ['points', 'createdAt'])
+@Index('idx_user_stellar_public_key',['stellarPublicKey'])
+@Index('idx_user_evm_address',       ['evmAddress'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -69,10 +79,11 @@ export class User {
   @Column({ name: 'phone_verified', default: false })
   phoneVerified: boolean;
 
-  // ── Waitlist / Referral ────────────────────────────────────────────────────
+  // ── Waitlist / Referral ──────────────────────────────────────────────────
   @Column({ name: 'referral_code', type: 'varchar', length: 20, nullable: true, unique: true })
   referralCode: string | null;
 
+  // Stored as plain varchar — referrer may be a waitlist entry or a full user
   @Column({ name: 'referred_by', type: 'varchar', nullable: true })
   referredBy: string | null;
 
@@ -85,28 +96,40 @@ export class User {
   @Column({ name: 'ip_address', type: 'varchar', nullable: true })
   ipAddress: string | null;
 
-  // ── Stellar custodial wallet ───────────────────────────────────────────────
-  // Cheese generates this keypair at signup and holds the secret key.
-  // The user never sees or manages it.
+  // ── Stellar custodial wallet ─────────────────────────────────────────────
   @Column({ name: 'stellar_public_key', type: 'varchar', nullable: true, unique: true })
   stellarPublicKey: string | null;
 
   @Exclude()
-  @Column({ name: 'stellar_secret_enc', nullable: true, type: 'text' })
+  @Column({ name: 'stellar_secret_enc', type: 'text', nullable: true })
   stellarSecretEnc: string | null;
 
-  // ── EVM wallet address ─────────────────────────────────────────────────────
-  // Stored here so WalletService can aggregate the EVM balance in one DB
-  // query without going through the EVM contract's user registry on every call.
+  @Column({
+    name: 'stellar_wallet_status',
+    type: 'varchar',
+    default: WalletStatus.PENDING,
+  })
+  stellarWalletStatus: WalletStatus;
+
+  // ── EVM wallet ───────────────────────────────────────────────────────────
   @Column({ name: 'evm_address', type: 'varchar', nullable: true, unique: true })
   evmAddress: string | null;
 
+  @Column({
+    name: 'evm_wallet_status',
+    type: 'varchar',
+    default: WalletStatus.PENDING,
+  })
+  evmWalletStatus: WalletStatus;
+
+  // ── Timestamps ───────────────────────────────────────────────────────────
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
+  // ── Relations ────────────────────────────────────────────────────────────
   @OneToMany(() => Device, (d) => d.user, { cascade: true })
   devices: Device[];
 
@@ -116,6 +139,6 @@ export class User {
   @OneToMany(() => Transaction, (tx) => tx.user)
   transactions: Transaction[];
 
-  @OneToMany(() => ShareEvent, (share) => share.user, { nullable: true })
+  @OneToMany(() => ShareEvent, (share) => share.user)
   shareEvents: ShareEvent[];
 }
